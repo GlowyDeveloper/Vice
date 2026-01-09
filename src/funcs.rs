@@ -192,8 +192,8 @@ pub(crate) fn play_sound(name: String, low: bool) {
     audio::play_sfx(&path, low);
 }
 
-pub(crate) fn get_volume(name: String, get: bool, device: bool) -> String {
-    audio::get_volume_parsed(name, get, device)
+pub(crate) fn get_volume(name: String) -> String {
+    audio::get_volume_parsed(name)
 }
 
 pub(crate) fn uninstall() -> Result<String, String> {

@@ -138,17 +138,9 @@ class _ChannelBarState extends State<ChannelBar> {
   }
 
   Future<void> _getVolume() async {
-    String result = await invokeJS("get_volume", {
-      "name": translatedName == "null" ? widget.channel.device : translatedName,
-      "get": translatedName == "null",
-      "device": widget.channel.deviceOrApp
-    });
+    String result = await invokeJS("get_volume", {"name": widget.channel.name});
 
-    setState(() {volume = double.parse(result.split("¬")[0]) * sliderVolume;});
-
-    if (translatedName == "null")
-      setState(() {translatedName = result.split("¬")[1];});
-
+    setState(() {volume = double.parse(result);});
   }
 
   Future<void> _setVolume() async {

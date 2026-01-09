@@ -16,8 +16,7 @@ unsafe extern "C" {
     fn app_to_device(input: *const c_char, output: *const c_char, low_latency: bool, channel_name: *const c_char);
     fn insert_volume(key: *const c_char, value: f32);
     fn reset_volume();
-    fn get_volume(name: *const c_char, get: bool, device: bool) -> *const c_char;
-    fn free_cstr(ptr: *const c_char);
+    fn get_volume_display(key: *const c_char) -> f32;
 }
 
 fn get_blocks(channel_name: String) -> String {
@@ -171,14 +170,12 @@ pub(crate) fn set_volume(channel_name: String, volume: f32) {
     unsafe { insert_volume(name, volume); }
 }
 
-pub(crate) fn get_volume_parsed(name: String, get: bool, device: bool) -> String {
+pub(crate) fn get_volume_parsed(name: String) -> String {
     let name_cstr = CString::new(name).unwrap();
 
     unsafe {
-        let vol = get_volume(name_cstr.as_ptr(), get, device);
-        let string_volume: String = CStr::from_ptr(vol).to_string_lossy().into_owned();
-        free_cstr(vol);
-        string_volume
+        let vol = get_volume_display(name_cstr.as_ptr());
+        vol.to_string()
     }
 }
 

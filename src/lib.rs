@@ -204,12 +204,8 @@ fn handle_ipc(cmd: &str, args: serde_json::Value) -> serde_json::Value {
         }
     } else if cmd == "get_volume" {
         if let Some(name) = args.get("name").and_then(|v| v.as_str()) {
-            if let Some(get) = args.get("get").and_then(|v| v.as_bool()) {
-                if let Some(device) = args.get("device").and_then(|v| v.as_bool()) {
-                    let volume = funcs::get_volume(name.to_string(), get, device);
-                    return json!({"result": volume});
-                }
-            }
+            let volume = funcs::get_volume(name.to_string());
+            return json!({"result": volume});
         }
     } else if cmd == "uninstall" {
         let res = funcs::uninstall();

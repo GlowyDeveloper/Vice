@@ -323,180 +323,32 @@ extern "C" {
     std::atomic<bool> stop_audio(true);
     #pragma region Volumes
     static std::unordered_map<std::string, float> volume;
+    static std::unordered_map<std::string, float> volume_display;
 
     void reset_volume() {
         volume.clear();
+        volume_display.clear();
     }
 
     void insert_volume(const char* key, float value) {
         volume[key] = value;
     }
 
-    void free_cstr(const char* ptr) {
-        if (ptr) free((void*)ptr);
+    float get_volume_display(const char* key) {
+        return volume_display[key];
     }
 
-    const char* get_volume(const char* name, bool get, bool device) {
-        CoInitialize(nullptr);
-
-        if (device == true) {
-            IMMDevice* targetDevice = find_device_by_name(eCapture, name);
-            if (!targetDevice) {
-                CoUninitialize();
-                return string_to_cchar(get ? "0¬null" : "0");
-            }
-
-            IAudioMeterInformation* pMeterInfo = nullptr;
-
-            if (FAILED(targetDevice->Activate(__uuidof(IAudioMeterInformation), CLSCTX_ALL, NULL, (void**)&pMeterInfo))) {
-                std::cerr << "Failed to activate IAudioMeterInformation\n";
-                targetDevice->Release();
-                CoUninitialize();
-                return string_to_cchar(get ? "0¬null" : "0");
-            }
-
-            float peak = 0.0f;
-            if (SUCCEEDED(pMeterInfo->GetPeakValue(&peak))) {
-                std::string device_name = get_device_name(targetDevice);
-                targetDevice->Release();
-                pMeterInfo->Release();
-                CoUninitialize();
-                if (get == true) {
-                    return string_to_cchar(std::to_string(peak)+"¬"+device_name);
-                } else {
-                    return string_to_cchar(std::to_string(peak));
-                }
-            } else {
-                std::cerr << "GetPeakValue failed\n";
-                targetDevice->Release();
-                pMeterInfo->Release();
-                CoUninitialize();
-                return string_to_cchar(get ? "0¬null" : "0");
-            }
-        } else {
-            IMMDevice* targetDevice = nullptr;
-            std::wstring trueName;
-
-            if (get == true) {
-                DWORD targetPid = 0;
-                PROCESSENTRY32W pe32{};
-                pe32.dwSize = sizeof(pe32);
-                HANDLE hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-                if (Process32FirstW(hSnap, &pe32)) {
-                    do {
-                        std::string exe = wideToUtf8(pe32.szExeFile);
-                        if (exe.size() > 4 && exe.substr(exe.size() - 4) == ".exe")
-                            exe = exe.substr(0, exe.size() - 4);
-                        if (_stricmp(exe.c_str(), name) == 0) {
-                            targetPid = pe32.th32ProcessID;
-                            break;
-                        }
-                    } while (Process32NextW(hSnap, &pe32));
-                }
-                CloseHandle(hSnap);
-                if (!targetPid) {
-                    std::cerr << "Process not found: " << name << "\n";
-                    CoUninitialize();
-                    return string_to_cchar("0¬null");
-                }
-
-                IMMDeviceEnumerator* pEnum = nullptr;
-                CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**)&pEnum);
-
-                IMMDeviceCollection* devicesAll = nullptr;
-                pEnum->EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE, &devicesAll);
-                UINT deviceCount = 0; devicesAll->GetCount(&deviceCount);
-
-                for (UINT i = 0; i < deviceCount; ++i) {
-                    IMMDevice* dev = nullptr;
-                    if (FAILED(devicesAll->Item(i, &dev)) || !dev) continue;
-
-                    IAudioSessionManager2* mgr2 = nullptr;
-                    if (FAILED(dev->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr, (void**)&mgr2)) || !mgr2) {
-                        dev->Release();
-                        continue;
-                    }
-
-                    IAudioSessionEnumerator* sessionEnum = nullptr;
-                    if (FAILED(mgr2->GetSessionEnumerator(&sessionEnum)) || !sessionEnum) {
-                        mgr2->Release();
-                        dev->Release();
-                        continue;
-                    }
-
-                    int sessionCount = 0;
-                    sessionEnum->GetCount(&sessionCount);
-                    bool found = false;
-
-                    for (int s = 0; s < sessionCount; ++s) {
-                        IAudioSessionControl* ctrl = nullptr;
-                        if (FAILED(sessionEnum->GetSession(s, &ctrl)) || !ctrl) continue;
-
-                        IAudioSessionControl2* ctrl2 = nullptr;
-                        if (SUCCEEDED(ctrl->QueryInterface(__uuidof(IAudioSessionControl2), (void**)&ctrl2)) && ctrl2) {
-                            DWORD pid = 0;
-                            ctrl2->GetProcessId(&pid);
-                            ctrl2->Release();
-                            if (pid == targetPid) {
-                                targetDevice = dev;
-                                targetDevice->AddRef();
-                                found = true;
-                                break;
-                            }
-                        }
-                        ctrl->Release();
-                    }
-
-                    sessionEnum->Release();
-                    mgr2->Release();
-                    dev->Release();
-                    if (found) break;
-                }
-                devicesAll->Release();
-
-                if (!targetDevice) {
-                    std::cerr << "Failed to find audio session for PID\n";
-                    pEnum->Release();
-                    CoUninitialize();
-                    return string_to_cchar(get ? "0¬null" : "0");
-                }
-            } else {
-                targetDevice = find_device_by_name(eRender, name);
-                if (!targetDevice) {
-                    CoUninitialize();
-                    return string_to_cchar("0");
-                }
-            }
-
-            IAudioMeterInformation* pMeterInfo = nullptr;
-
-            if (FAILED(targetDevice->Activate(__uuidof(IAudioMeterInformation), CLSCTX_ALL, NULL, (void**)&pMeterInfo))) {
-                std::cerr << "Failed to activate IAudioMeterInformation\n";
-                targetDevice->Release();
-                CoUninitialize();
-                return string_to_cchar(get ? "0¬null" : "0");
-            }
-
-            float peak = 0.0f;
-            if (SUCCEEDED(pMeterInfo->GetPeakValue(&peak))) {
-                std::string device_name = get_device_name(targetDevice);
-                targetDevice->Release();
-                pMeterInfo->Release();
-                CoUninitialize();
-                if (get == true) {
-                    return string_to_cchar(std::to_string(peak)+"¬"+device_name);
-                } else {
-                    return string_to_cchar(std::to_string(peak));
-                }
-            } else {
-                std::cerr << "GetPeakValue failed\n";
-                targetDevice->Release();
-                pMeterInfo->Release();
-                CoUninitialize();
-                return string_to_cchar(get ? "0¬null" : "0");
-            }
+    void find_volume(const char* channel_name, float* buffer, size_t sampleCount) {
+        float peak = 0.0f;
+        for (size_t i = 0; i < sampleCount; ++i)
+        {
+            float v = std::fabs(buffer[i]);
+            if (v > peak)
+                peak = v;
         }
+        volume_display[channel_name] = std::min(peak * 2.0f, 2.0f);
     }
+    
     #pragma endregion
     #pragma region Get Outputs
     const char** get_outputs(size_t* len) {
@@ -849,6 +701,7 @@ extern "C" {
     #pragma endregion
     #pragma region Device to Device
     void device_to_device(const char* input, const char* output, bool low_latency, const char* channel_name, const char* path) {
+        std::cout << "1\n";
         CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 
         IMMDevice* captureDevice = find_device_by_name(eCapture, input);
@@ -946,6 +799,7 @@ extern "C" {
         for (int c = 0; c < renderChannels; ++c) {
             managers[c].Initialize(path, wfRender->nSamplesPerSec);
         }
+        std::cout << "2\n";
 
         while (!stop_audio.load()) {
             UINT32 packetFrames = 0;
@@ -1001,6 +855,10 @@ extern "C" {
                 size_t c = i % renderChannels;
                 toRender[i] = managers[c].Render(&toRender[i]);
             }
+            std::cout << "3\n";
+
+            find_volume(channel_name, toRender, outFrames * renderChannels);
+            std::cout << "4\n";
 
             size_t written = 0;
             while (written < outFrames && !stop_audio.load()) {
