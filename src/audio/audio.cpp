@@ -560,7 +560,7 @@ extern "C" {
     }
     #pragma endregion
     #pragma region Play Sound
-    void play_sound(const char* file, const char* device_name, bool low_latency) {
+    void play_sound(const char* file, const char* device_name, bool low_latency, const char* path) {
         PCMResult result = loadPCM(file);
         if (result.result != 0) {
             if (result.result == 1) {
@@ -626,7 +626,19 @@ extern "C" {
         size_t bytesPerSample = pwfx->wBitsPerSample / 8;
         size_t bytesPerFrame = pwfx->nChannels * bytesPerSample;
         size_t totalBytes = resampledFrames * pwfx->nChannels * bytesPerSample;
+        int renderChannels = pwfx->nChannels;
         std::vector<char> outBuffer(totalBytes);
+
+        std::vector<BlocksManager> managers(renderChannels);
+        for (int c = 0; c < renderChannels; ++c) {
+            managers[c].Initialize(path, pwfx->nSamplesPerSec);
+        }
+
+        size_t totalSamples = resampledFrames * renderChannels;
+        for (size_t i = 0; i < totalSamples; ++i) {
+            size_t c = i % renderChannels;
+            finalBuffer[i] = managers[c].Render(&finalBuffer[i]);
+        }
 
         if (is_format_float(pwfx) && pwfx->wBitsPerSample == 32) {
             memcpy(outBuffer.data(), finalBuffer, totalBytes);
@@ -701,7 +713,8 @@ extern "C" {
     #pragma endregion
     #pragma region Device to Device
     void device_to_device(const char* input, const char* output, bool low_latency, const char* channel_name, const char* path) {
-        std::cout << "1\n";
+        volume_display[channel_name] = 0.0f;
+
         CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 
         IMMDevice* captureDevice = find_device_by_name(eCapture, input);
@@ -799,7 +812,6 @@ extern "C" {
         for (int c = 0; c < renderChannels; ++c) {
             managers[c].Initialize(path, wfRender->nSamplesPerSec);
         }
-        std::cout << "2\n";
 
         while (!stop_audio.load()) {
             UINT32 packetFrames = 0;
@@ -855,10 +867,8 @@ extern "C" {
                 size_t c = i % renderChannels;
                 toRender[i] = managers[c].Render(&toRender[i]);
             }
-            std::cout << "3\n";
 
             find_volume(channel_name, toRender, outFrames * renderChannels);
-            std::cout << "4\n";
 
             size_t written = 0;
             while (written < outFrames && !stop_audio.load()) {
@@ -916,7 +926,9 @@ extern "C" {
     }
     #pragma endregion
     #pragma region App to Device
-    void app_to_device(const char* input, const char* output, bool low_latency, const char* channel_name) {
+    void app_to_device(const char* input, const char* output, bool low_latency, const char* channel_name, const char* path) {
+        volume_display[channel_name] = 0.0f;
+
         CoInitialize(nullptr);
 
         DWORD targetPid = 0;
@@ -1056,6 +1068,13 @@ extern "C" {
         UINT32 renderBufferFrames = 0;
         renderClient->GetBufferSize(&renderBufferFrames);
 
+        int renderChannels = wfRender->nChannels;
+
+        std::vector<BlocksManager> managers(renderChannels);
+        for (int c = 0; c < renderChannels; ++c) {
+            managers[c].Initialize(path, wfRender->nSamplesPerSec);
+        }
+
         captureClient->Start(); renderClient->Start();
 
         size_t captureFramesMax = wfCapture->nSamplesPerSec;
@@ -1111,6 +1130,13 @@ extern "C" {
                 outBuffer = captureBuffer.data();
                 outFrames = numFrames;
             }
+
+            for (size_t i = 0; i < outFrames * wfRender->nChannels; ++i) {
+                size_t c = i % wfRender->nChannels;
+                outBuffer[i] = managers[c].Render(&outBuffer[i]);
+            }
+
+            find_volume(channel_name, outBuffer, outFrames * wfRender->nChannels);
 
             size_t framesLeft = outFrames;
             size_t frameIdx = 0;

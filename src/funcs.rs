@@ -189,7 +189,7 @@ pub(crate) fn play_sound(name: String, low: bool) {
         return;
     }
 
-    audio::play_sfx(&path, low);
+    audio::play_sfx(&path, low, name);
 }
 
 pub(crate) fn get_volume(name: String) -> String {

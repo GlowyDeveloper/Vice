@@ -11,9 +11,9 @@ unsafe extern "C" {
     fn get_outputs(len: *mut usize) -> *const *const c_char;
     fn get_inputs(len: *mut usize) -> *const *const c_char;
     fn get_apps(len: *mut usize) -> *const *const c_char;
-    fn play_sound(file: *const c_char, device_name: *const c_char, low_latency: bool);
+    fn play_sound(file: *const c_char, device_name: *const c_char, low_latency: bool, path: *const c_char);
     fn device_to_device(input: *const c_char, output: *const c_char, low_latency: bool, channel_name: *const c_char, path: *const c_char);
-    fn app_to_device(input: *const c_char, output: *const c_char, low_latency: bool, channel_name: *const c_char);
+    fn app_to_device(input: *const c_char, output: *const c_char, low_latency: bool, channel_name: *const c_char, path: *const c_char);
     fn insert_volume(key: *const c_char, value: f32);
     fn reset_volume();
     fn get_volume_display(key: *const c_char) -> f32;
@@ -95,8 +95,9 @@ pub(crate) fn inputs() -> Vec<String> {
     }
 }
 
-pub(crate) fn play_sfx(file_path: &str, low_latency: bool) {
+pub(crate) fn play_sfx(file_path: &str, low_latency: bool, sfx_name: String) {
     let output: String = files::get_settings().output;
+    let path_cstr: CString = CString::new(get_blocks(sfx_name)).unwrap();
 
     let c_device: Option<CString> = match output.is_empty() {
         true => None,
@@ -106,10 +107,11 @@ pub(crate) fn play_sfx(file_path: &str, low_latency: bool) {
     let device: *const c_char = c_device
         .as_ref()
         .map_or(std::ptr::null(), |s| s.as_ptr());
+    let path: *const i8 = path_cstr.as_ptr();
     
     let file: CString = CString::new(file_path).unwrap();
 
-    unsafe {play_sound(file.as_ptr(), device, low_latency);}
+    unsafe {play_sound(file.as_ptr(), device, low_latency, path);}
 }
 
 pub(crate) fn apps() -> Vec<String> {
@@ -153,13 +155,15 @@ fn manage_app(app_name: String, output_device_name: String, low_latency: bool, c
         true => None,
         false => Some(CString::new(output_device_name).unwrap())
     };
-    let name_cstr: CString = CString::new(channel_name).unwrap();
+    let name_cstr: CString = CString::new(channel_name.clone()).unwrap();
+    let path_cstr: CString = CString::new(get_blocks(channel_name)).unwrap();
 
     let input: *const i8 = input_cstr.as_ptr();
     let output: *const i8 = output_cstr.as_ref().map_or(std::ptr::null(), |cstr| cstr.as_ptr());
     let name: *const i8 = name_cstr.as_ptr();
+    let path: *const i8 = path_cstr.as_ptr();
 
-    unsafe {app_to_device(input, output, low_latency, name)};
+    unsafe {app_to_device(input, output, low_latency, name, path)};
 }
 
 pub(crate) fn set_volume(channel_name: String, volume: f32) {
