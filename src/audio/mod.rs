@@ -51,13 +51,13 @@ fn get_blocks(channel_name: String) -> String {
             parsed = format!("{} time={}", parsed, time.as_i64().unwrap_or(0).to_string());
         }
         if let Some(intensity) = b.get("intensity") {
-            parsed = format!("{} intensity={}", parsed, intensity.as_i64().unwrap_or(0).to_string());
+            parsed = format!("{} intensity={}", parsed, intensity.as_f64().unwrap_or(0.0).to_string());
         }
         if let Some(amount) = b.get("amount") {
-            parsed = format!("{} amount={}", parsed, amount.as_i64().unwrap_or(0).to_string());
+            parsed = format!("{} amount={}", parsed, amount.as_f64().unwrap_or(0.0).to_string());
         }
         if let Some(threshold) = b.get("threshold") {
-            parsed = format!("{} threshold={}", parsed, threshold.as_i64().unwrap_or(0).to_string());
+            parsed = format!("{} threshold={}", parsed, threshold.as_f64().unwrap_or(0.0).to_string());
         }
 
         parsed = format!("{}\n", parsed);

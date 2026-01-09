@@ -46,7 +46,8 @@ pub(crate) fn edit_channel(color: [u8; 3], icon: String, name: String, deviceapp
     let mut channels: Vec<Channel> = files::get_channels();
 
     if let Some(pos) = channels.iter().position(|c: &Channel| c.name == oldname) {
-        channels[pos] = Channel{name, icon, color, device: deviceapps, deviceorapp: device, lowlatency: low, volume: 1.0};
+        let volume  = channels[pos].volume;
+        channels[pos] = Channel{name, icon, color, device: deviceapps, deviceorapp: device, lowlatency: low, volume};
     } else {
         eprintln!("Channel \"{}\" not found", oldname);
         return Err(format!("Channel \"{}\" not found", oldname));

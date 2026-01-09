@@ -940,8 +940,12 @@ extern "C" {
         captureClient->Start();
         renderClient->Start();
 
-        BlocksManager blocks = BlocksManager{};
-        blocks.Initialize(path, wfRender->nSamplesPerSec);
+        std::vector<BlocksManager> managers;
+        managers.resize(renderChannels);
+
+        for (int c = 0; c < renderChannels; ++c) {
+            managers[c].Initialize(path, wfRender->nSamplesPerSec);
+        }
 
         while (!stop_audio.load()) {
             UINT32 packetFrames = 0;
@@ -994,7 +998,8 @@ extern "C" {
             }
 
             for (size_t i = 0; i < outFrames * renderChannels; ++i) {
-                toRender[i] = blocks.Render(&toRender[i]);
+                size_t c = i % renderChannels;
+                toRender[i] = managers[c].Render(&toRender[i]);
             }
 
             size_t written = 0;

@@ -51,7 +51,7 @@ class GainBlock extends StatelessWidget {
                       onChanged: interactable ? onChanged : null,
                     ),
                     Text(
-                      "Time: ${amount?.toStringAsFixed(1) ?? '1'}x",
+                      "Gain: ${amount?.toStringAsFixed(1) ?? '1'}x",
                       style: const TextStyle(color: Colors.white, fontSize: 16),
                     ),
                   ],

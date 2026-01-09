@@ -13,7 +13,7 @@ class Block {
 public:
     virtual ~Block() = default;
 
-    virtual float Render(float* buffer) {return *buffer;}
+    virtual float Render(float buffer) {return buffer;}
 };
 
 class DelayBlock : public Block {
@@ -21,52 +21,76 @@ public:
     int time_ms;
     int sample_rate;
     int delay_samples;
-    std::deque<float> buffer;
+    std::deque<float> buffers;
 
     DelayBlock(int t, int sr) : time_ms(t), sample_rate(sr), delay_samples(t * sr / 1000) {}
 
-    float Render(float* buffer) override {
-        this->buffer.push_back(*buffer);
-        if (this->buffer.size() > delay_samples) {
-            float out = this->buffer.front();
-            this->buffer.pop_front();
-            return out;
-        } else {
+    float Render(float buffer) override {
+        if (time_ms == 0)
+            return buffer;
+
+        this->buffers.push_back(buffer);
+
+        if (this->buffers.size() <= delay_samples)
             return 0.0f;
-        }
+
+        float out = this->buffers.front();
+        this->buffers.pop_front();
+
+        return out;
     }
 };
 
 class DistortionBlock : public Block {
 public:
-    int intensity;
+    float intensity;
 
-    DistortionBlock(int i) : intensity(i) {}
+    DistortionBlock(float i) : intensity(i) {}
 
-    float Render(float* buffer) override {
-        return *buffer;
+    float Render(float buffer) override {
+        if (intensity <= 0.0f)
+            return buffer;
+
+        float drive = 1.0f + intensity * 99.0f;
+        float x = buffer * drive;
+        return std::tanh(x) / std::tanh(drive);
     }
 };
 
 class CompressionBlock : public Block {
 public:
-    int amount;
+    float amount;
 
-    CompressionBlock(int a) : amount(a) {}
+    CompressionBlock(float a) : amount(a) {}
 
-    float Render(float* buffer) override {
-        return *buffer;
+    float Render(float buffer) override {
+        float absInput = std::fabs(buffer);
+
+        if (amount <= 0.0f || absInput < 1e-6f)
+            return buffer;
+
+        float threshold = amount * 0.1f;
+
+        if (absInput <= threshold)
+            return buffer;
+
+        float ratio = 1.0f + amount * 99.0f;
+
+        float excess = absInput - threshold;
+        float compressed = threshold + excess / ratio;
+
+        return buffer * (compressed / absInput);
     }
 };
 
 class GainBlock : public Block {
 public:
-    double amount;
+    float amount;
 
-    GainBlock(double t) : amount(t) {}
+    GainBlock(float t) : amount(t) {}
 
-    float Render(float* buffer) override {
-        float sample = *buffer * amount;
+    float Render(float buffer) override {
+        float sample = buffer * amount;
 
         sample = std::max(-1.0f, std::min(1.0f, sample));
         return sample;
@@ -75,28 +99,31 @@ public:
 
 class GatingBlock : public Block {
 public:
-    int threshold;
+    float threshold;
 
-    GatingBlock(int t) : threshold(t) {}
+    GatingBlock(float t) : threshold(t) {}
 
-    float Render(float* buffer) override {
-        return *buffer;
+    float Render(float buffer) override {
+        if (std::fabs(buffer) < threshold)
+            return 0.0f;
+
+        return buffer;
     }
 };
 
 class ReverbBlock : public Block {
 public:
-    int intensity;
+    float intensity;
     int sample_rate;
     int delay_samples;
-    double feedback;
+    float feedback;
     std::deque<float> buffer;
 
-    ReverbBlock(int i, int sr) : intensity(i), sample_rate(sr), delay_samples(i * sr / 1000), feedback(0.4) {}
+    ReverbBlock(float i, int sr) : intensity(i), sample_rate(sr), delay_samples((int)(i * 2000.0f * sr / 1000.0f)), feedback(i * 0.8f) {
+        delay_samples = std::max(1, delay_samples);
+    }
 
-    float Render(float* buffer) override {
-        float input = *buffer;
-
+    float Render(float buffer) override {
         float delayed = 0.0f;
 
         if (this->buffer.size() >= delay_samples) {
@@ -104,10 +131,10 @@ public:
             this->buffer.pop_front();
         }
 
-        float feedback_sample = input + delayed * feedback;
+        float feedback_sample = buffer + delayed * feedback;
         this->buffer.push_back(feedback_sample);
 
-        float output = input + delayed * 0.5f;
+        float output = buffer + delayed * 0.5f;
         return output;
     }
 };
@@ -132,7 +159,7 @@ public:
         float current_buffer = *buffer;
 
         for (size_t i = 0; i < blocks.size(); ++i) {
-            current_buffer = blocks.at(i).get()->Render(&current_buffer);
+            current_buffer = blocks.at(i).get()->Render(current_buffer);
         }
 
         return current_buffer;
@@ -147,19 +174,18 @@ private:
         std::string type;
         iss >> type;
 
-        std::unordered_map<std::string, int> params;
+        std::unordered_map<std::string, float> params;
         std::string token;
 
         while (iss >> token) {
             auto pos = token.find('=');
             if (pos != std::string::npos) {
-                params[token.substr(0, pos)] =
-                    std::stoi(token.substr(pos + 1));
+                params[token.substr(0,pos)] = std::stof(token.substr(pos+1));
             }
         }
 
         if (type == "delay")
-            return std::make_unique<DelayBlock>(params.at("time"), sample_rate);
+            return std::make_unique<DelayBlock>(static_cast<int>(params.at("time")), sample_rate);
         if (type == "distortion")
             return std::make_unique<DistortionBlock>(params.at("intensity"));
         if (type == "compression")

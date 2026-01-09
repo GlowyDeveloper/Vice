@@ -116,11 +116,11 @@ class _BlocksViewState extends State<BlocksView> {
                           return Padding(
                             padding: EdgeInsetsGeometry.all(8),
                             child: ReverbBlock(
-                              intensity: block["intensity"],
+                              intensity: block["intensity"] * 100,
                               interactable: true,
                               onChanged: (newIntensity) {
                                 setState(() {
-                                  block["intensity"] = newIntensity;
+                                  block["intensity"] = newIntensity / 100;
                                 });
                               },
                               onDelete: () => {
@@ -134,11 +134,11 @@ class _BlocksViewState extends State<BlocksView> {
                           return Padding(
                             padding: EdgeInsetsGeometry.all(8),
                             child: CompressionBlock(
-                              amount: block["amount"],
+                              amount: block["amount"] * 100,
                               interactable: true,
                               onChanged: (newAmount) {
                                 setState(() {
-                                  block["amount"] = newAmount;
+                                  block["amount"] = newAmount / 100;
                                 });
                               },
                               onDelete: () => {
@@ -152,11 +152,11 @@ class _BlocksViewState extends State<BlocksView> {
                           return Padding(
                             padding: EdgeInsetsGeometry.all(8),
                             child: DistortionBlock(
-                              intensity: block["intensity"],
+                              intensity: block["intensity"] * 100,
                               interactable: true,
                               onChanged: (newIntensity) {
                                 setState(() {
-                                  block["intensity"] = newIntensity;
+                                  block["intensity"] = newIntensity / 100;
                                 });
                               },
                               onDelete: () => {
@@ -188,11 +188,11 @@ class _BlocksViewState extends State<BlocksView> {
                           return Padding(
                             padding: EdgeInsetsGeometry.all(8),
                             child: GatingBlock(
-                              threshold: block["threshold"],
+                              threshold: block["threshold"] * 100,
                               interactable: true,
                               onChanged: (newThreshold) {
                                 setState(() {
-                                  block["threshold"] = newThreshold;
+                                  block["threshold"] = newThreshold / 100;
                                 });
                               },
                               onDelete: () => {
@@ -243,17 +243,17 @@ class _BlocksViewState extends State<BlocksView> {
                               break;
                             case "reverb":
                               setState(() {
-                                Blocks.add({"type": "reverb", "intensity": 50.0});
+                                Blocks.add({"type": "reverb", "intensity": 0.5});
                               });
                               break;
                             case "compression":
                               setState(() {
-                                Blocks.add({"type": "compression", "amount": 50.0});
+                                Blocks.add({"type": "compression", "amount": 0.5});
                               });
                               break;
                             case "distortion":
                               setState(() {
-                                Blocks.add({"type": "distortion", "intensity": 50.0});
+                                Blocks.add({"type": "distortion", "intensity": 0.5});
                               });
                               break;
                             case "gain":
@@ -263,7 +263,7 @@ class _BlocksViewState extends State<BlocksView> {
                               break;
                             case "gating":
                               setState(() {
-                                Blocks.add({"type": "gating", "threshold": 50.0});
+                                Blocks.add({"type": "gating", "threshold": 0.5});
                               });
                               break;
                             default:
