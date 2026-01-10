@@ -178,7 +178,7 @@ private:
         std::string token;
 
         while (iss >> token) {
-            auto pos = token.find('=');
+            auto pos = token.find("=");
             if (pos != std::string::npos) {
                 params[token.substr(0,pos)] = std::stof(token.substr(pos+1));
             }

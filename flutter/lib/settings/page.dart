@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:vice/randoms.dart';
 import '../invoke_js.dart';
@@ -203,20 +204,53 @@ class _SettingsPageState extends State<SettingsPage> {
 
       bottomNavigationBar: Padding(
         padding: EdgeInsetsGeometry.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: Row(
           children: [
-            TextButton(
-              onPressed: () => _update(),
-              child: Text("Update", style: TextStyle(fontSize: 24, color: text)),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "Version: ${settings.version}",
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: text_muted
+                  ),
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton(
+                      icon: Icon(FontAwesomeIcons.github, color: text_muted),
+                      onPressed: () async {
+                        await invokeJS("open_link", {"url": "https://github.com/GlowyDeveloper/Vice"});
+                      },
+                    )
+                  ],
+                )
+              ],
             ),
 
-            const SizedBox(height: 20),
+            SizedBox(width: 40),
 
-            TextButton(
-              onPressed: () => _uninstall(),
-              child: Text("Uninstall", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.redAccent)),
-            ),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextButton(
+                    onPressed: () => _update(),
+                    child: Text("Update", style: TextStyle(fontSize: 24, color: text)),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  TextButton(
+                    onPressed: () => _uninstall(),
+                    child: Text("Uninstall", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.redAccent)),
+                  ),
+                ],
+              )
+            )
           ],
         )
       ),
@@ -235,7 +269,7 @@ class SettingsData extends ChangeNotifier {
   bool startup = false;
 
 	Future<void> loadSettings() async {
-		final settings = await invokeJS('get_settings');
+		final settings = await invokeJS("get_settings");
 		
     scale = settings["scale"];
     lightMode = settings["light"];

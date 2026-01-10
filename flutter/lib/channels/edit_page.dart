@@ -31,7 +31,7 @@ class _ChannelsEditState extends State<ChannelsEdit> {
   Color pickerColor = Color(0xFFFF0000);
   Color currentColor = Color(0xFFFF0000);
   String icon = "question_mark";
-  List<String> devicesApps = ["Reopen this menu.", "If this persists,", "check if you have audio devices connected if you're on option \"Capture device\".", "If you're on \"Capture app\", restart your computer."];
+  List<String> devicesApps = ["Reopen this menu.", "If this persists,", "Check if you have audio devices connected if you're on option \"Capture device\".", "If you're on \"Capture app\", restart your computer."];
   String selectedDeviceApp = "Select audio device";
   String deviceOrApp = "Select audio device";
   bool device = true;

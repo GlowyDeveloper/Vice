@@ -3,12 +3,10 @@ import 'package:provider/provider.dart';
 import 'package:vice/blocks/page.dart';
 import 'package:vice/main.dart';
 import 'package:vice/randoms.dart';
-import 'invoke_js.dart';
 import 'performance/page.dart';
 import 'settings/page.dart';
 import 'soundboard/page.dart';
 import 'channels/page.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 enum WindowPage { Channels, Soundboard, Settings, Performance, Blocks }
 
@@ -26,13 +24,20 @@ class _WindowState extends State<Window> {
   Widget build(BuildContext context) {
     context.watch<AppStateNotifier>();
     
+    List<Map<String, dynamic>> buttons = [
+      {"title": "Channels", "page": WindowPage.Channels},
+      {"title": "Soundboard", "page": WindowPage.Soundboard},
+      {"title": "Settings", "page": WindowPage.Settings},
+      if (settings.monitor) {"title": "Performance", "page": WindowPage.Performance},
+      {"title": "Blocks", "page": WindowPage.Blocks},
+    ];
+    
     return Scaffold(
       body: Column(
         children: [
           Align(
             alignment: Alignment.topCenter,
             child: Container(
-              width: MediaQuery.of(context).size.width,
               height: 70,
               decoration: BoxDecoration(
                 color: bg_mid,
@@ -41,89 +46,78 @@ class _WindowState extends State<Window> {
                   bottomRight: Radius.circular(36),
                 ),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  TextButton(
-                    style: TextButton.styleFrom(
-                      foregroundColor: _currentPage == WindowPage.Channels ? text : text_muted,
-                      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
-                      alignment: Alignment.centerLeft,
-                    ),
-                    onPressed: () => setState(() => _currentPage = WindowPage.Channels),
-                    child: Text("Channels", style: TextStyle(fontSize: 32)),
-                  ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  List<double> widths = [];
+                  for (var button in buttons) {
+                    final TextPainter painter = TextPainter(
+                      text: TextSpan(text: button["title"] as String, style: TextStyle(fontSize: 32)),
+                      textDirection: TextDirection.ltr,
+                    );
+                    painter.layout();
+                    widths.add(painter.width + 40.0);
+                  }
 
-                  const SizedBox(height: 10),
+                  const double overflowWidth = 48.0;
+                  double totalWidth = 0.0;
 
-                  TextButton(
-                    style: TextButton.styleFrom(
-                      foregroundColor: _currentPage == WindowPage.Soundboard ? text : text_muted,
-                      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
-                      alignment: Alignment.centerLeft,
-                    ),
-                    onPressed: () => setState(() => _currentPage = WindowPage.Soundboard),
-                    child: Text("Soundboard", style: TextStyle(fontSize: 32)),
-                  ),
+                  List<int> visibleIndices = [];
+                  List<int> overflowIndices = [];
+                  for (int i = 0; i < buttons.length; i++) {
+                    double buttonWidth = widths[i];
+                    double potentialTotal = totalWidth + buttonWidth;
+                    if (overflowIndices.isNotEmpty || i < buttons.length - 1) {
+                      potentialTotal += overflowWidth;
+                    }
+                    if (potentialTotal <= constraints.maxWidth) {
+                      visibleIndices.add(i);
+                      totalWidth += buttonWidth;
+                    } else {
+                      overflowIndices.add(i);
+                    }
+                  }
 
-                  const SizedBox(height: 10),
-
-                  TextButton(
-                    style: TextButton.styleFrom(
-                      foregroundColor: _currentPage == WindowPage.Settings ? text : text_muted,
-                      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
-                      alignment: Alignment.centerLeft,
-                    ),
-                    onPressed: () => setState(() => _currentPage = WindowPage.Settings),
-                    child: Text("Settings", style: TextStyle(fontSize: 32)),
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  performance(),
-
-                  const SizedBox(height: 10),
-
-                  TextButton(
-                    style: TextButton.styleFrom(
-                      foregroundColor: _currentPage == WindowPage.Blocks ? text : text_muted,
-                      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
-                      alignment: Alignment.centerLeft,
-                    ),
-                    onPressed: () => setState(() => _currentPage = WindowPage.Blocks),
-                    child: Text("Blocks", style: TextStyle(fontSize: 32)),
-                  ),
-
-                  Spacer(),
-
-                  Padding(
-                    padding: EdgeInsets.all(4),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          "Version: ${settings.version}",
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: text
-                          ),
+                  List<Widget> children = [];
+                  for (int i = 0; i < visibleIndices.length; i++) {
+                    int idx = visibleIndices[i];
+                    var button = buttons[idx];
+                    children.add(
+                      TextButton(
+                        style: TextButton.styleFrom(
+                          foregroundColor: _currentPage == button["page"] ? text : text_muted,
+                          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+                          alignment: Alignment.centerLeft,
                         ),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            IconButton(
-                              icon: Icon(FontAwesomeIcons.github, color: text),
-                              onPressed: () async {
-                                await invokeJS("open_link", {"url": "https://github.com/GlowyDeveloper/Vice"});
-                              },
-                            )
-                          ],
-                        )
-                      ],
-                    )
-                  )
-                ],
+                        onPressed: () => setState(() => _currentPage = button["page"]),
+                        child: Text(button["title"] as String, style: const TextStyle(fontSize: 32)),
+                      ),
+                    );
+                    if (i < visibleIndices.length - 1) {
+                      children.add(const SizedBox(width: 10));
+                    }
+                  }
+
+                  if (overflowIndices.isNotEmpty) {
+                    children.add(
+                      PopupMenuButton<WindowPage>(
+                        onSelected: (page) => setState(() => _currentPage = page),
+                        itemBuilder: (context) => overflowIndices.map((i) {
+                          var button = buttons[i];
+                          return PopupMenuItem<WindowPage>(
+                            value: button["page"] as WindowPage,
+                            child: Text(button["title"] as String),
+                          );
+                        }).toList(),
+                        icon: Icon(Icons.more_horiz, color: text),
+                      ),
+                    );
+                  }
+                  
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: children,
+                  );
+                },
               ),
             )
           ),
@@ -143,20 +137,5 @@ class _WindowState extends State<Window> {
         ]
       )
     );
-  }
-
-  Widget performance() {
-    if (settings.monitor == true) {
-      return TextButton(
-        style: TextButton.styleFrom(
-          foregroundColor: _currentPage == WindowPage.Performance ? text : text_muted,
-          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
-          alignment: Alignment.centerLeft,
-        ),
-        onPressed: () => setState(() => _currentPage = WindowPage.Performance),
-        child: Text("Performance", style: TextStyle(fontSize: 32)),
-      );
-    }
-    return Center();
   }
 }

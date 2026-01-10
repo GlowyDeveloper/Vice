@@ -232,8 +232,8 @@ fn handle_ipc(cmd: &str, args: serde_json::Value) -> serde_json::Value {
         let version = env!("CARGO_PKG_VERSION");
         return json!({ "result": version });
     } else if cmd == "open_link" {
-        if let Some(link) = args.get("link").and_then(|v| v.as_str()) {
-            return json!({"result": open::that(link).map_err(|e| e.to_string())});
+        if let Some(url) = args.get("url").and_then(|v| v.as_str()) {
+            return json!({"result": open::that(url).map_err(|e| e.to_string())});
         }
     }
 
