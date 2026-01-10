@@ -345,6 +345,13 @@ pub fn create_window(event_loop: &EventLoopWindowTarget<ServerCommand>, proxy: E
             let mut web_context = WebContext::new(Some(cache_dir));
 
             let webview = WebViewBuilder::new_with_web_context(&mut web_context)
+                .with_initialization_script(
+                    r#"
+                    document.addEventListener('contextmenu', event => {
+                        event.preventDefault();
+                    });
+                    "#
+                )
                 .with_url("http://127.0.0.1:5923")
                 .with_ipc_handler({
                     let proxy = proxy.clone();
