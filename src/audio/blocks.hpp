@@ -2,84 +2,149 @@
 
 #include <vector>
 #include <string>
-#include <unordered_map>
 #include <sstream>
-#include <memory>
-#include <stdexcept>
-#include <list>
 #include <deque>
+
+#pragma region Helpers
 
 class Block {
 public:
     virtual ~Block() = default;
 
-    virtual float Render(float buffer) {return buffer;}
+    virtual float Process(float buffer) {return buffer;}
+    virtual void Start() {}
 };
+
+class DelayLine {
+public:
+    std::vector<float> buffer;
+    int size = 1;
+    int index = 0;
+
+    void Init(int samples) {
+        size = std::max(1, samples);
+        buffer.assign(size, 0.0f);
+        index = 0;
+    }
+
+    float Read() const {
+        return buffer[index];
+    }
+
+    void Write(float x) {
+        buffer[index] = x;
+        index = (index + 1) % size;
+    }
+};
+
+class CombFilter {
+public:
+    DelayLine delay;
+    float feedback = 0.7f;
+    float damp = 0.5f;
+
+    float filter_store = 0.0f;
+
+    void Init(int delay_samples, float fb, float d) {
+        delay.Init(delay_samples);
+        feedback = fb;
+        damp = d;
+        filter_store = 0.0f;
+    }
+
+    float Process(float input) {
+        float output = delay.Read();
+
+        filter_store = output * (1.0f - damp) + filter_store * damp;
+        delay.Write(input + filter_store * feedback);
+
+        return output;
+    }
+};
+
+class AllPassFilter {
+public:
+    DelayLine delay;
+    float feedback = 0.5f;
+
+    void Init(int delay_samples, float fb) {
+        delay.Init(delay_samples);
+        feedback = fb;
+    }
+
+    float Process(float input) {
+        float buf = delay.Read();
+        float output = -input + buf;
+        delay.Write(input + buf * feedback);
+        return output;
+    }
+};
+
+#pragma endregion
+#pragma region Classes
 
 class DelayBlock : public Block {
 public:
-    int time_ms;
-    int sample_rate;
-    int delay_samples;
-    std::deque<float> buffers;
+    float time_ms = 0.0f;
+    float mix = 1.0f;
+    int sample_rate = 44100;
+    int delay_samples = 1;
+    std::vector<float> buffer;
+    int write_idx = 0;
 
-    DelayBlock(int t, int sr) : time_ms(t), sample_rate(sr), delay_samples(t * sr / 1000) {}
+    DelayBlock(float t_ms, int sr) : time_ms(t_ms), sample_rate(sr) {}
 
-    float Render(float buffer) override {
-        if (time_ms == 0)
-            return buffer;
+    void Start() override {
+        delay_samples = std::max(1, int(time_ms * sample_rate / 1000.0f));
+        buffer.assign(delay_samples, 0.0f);
+        write_idx = 0;
+    }
 
-        this->buffers.push_back(buffer);
+    float Process(float input) override {
+        float delayed = buffer[write_idx];
+        buffer[write_idx] = input;
+        write_idx = (write_idx + 1) % delay_samples;
 
-        if (this->buffers.size() <= delay_samples)
-            return 0.0f;
-
-        float out = this->buffers.front();
-        this->buffers.pop_front();
-
-        return out;
+        return input * (1.0f - mix) + delayed * mix;
     }
 };
 
 class DistortionBlock : public Block {
 public:
-    float intensity;
+    float drive = 1.0f;
 
-    DistortionBlock(float i) : intensity(i) {}
+    DistortionBlock(float amount) {
+        drive = 1.0f + amount * 20.0f;
+    }
 
-    float Render(float buffer) override {
-        if (intensity <= 0.0f)
-            return buffer;
-
-        float drive = 1.0f + intensity * 99.0f;
-        float x = buffer * drive;
-        return std::tanh(x) / std::tanh(drive);
+    float Process(float x) override {
+        return std::tanh(x * drive);
     }
 };
 
 class CompressionBlock : public Block {
 public:
-    float amount;
+    float threshold = 0.2f;
+    float ratio = 4.0f;
+    float env = 0.0f;
 
-    CompressionBlock(float a) : amount(a) {}
+    float attack = 0.01f;
+    float release = 0.1f;
 
-    float Render(float buffer) override {
-        float absInput = std::fabs(buffer);
+    CompressionBlock(float a) : threshold(a) {}
 
-        if (amount <= 0.0f || absInput < 1e-6f)
-            return buffer;
+    float Process(float x) override {
+        float level = std::fabs(x);
+        float coeff = level > env ? attack : release;
+        env += coeff * (level - env);
 
-        float threshold = amount * 0.1f;
+        if (env <= threshold)
+            return x;
 
-        if (absInput <= threshold)
-            return buffer;
+        float gain = threshold + (env - threshold) / ratio;
+        gain /= env;
 
-        float ratio = 1.0f + amount * 99.0f;
-
-        float excess = absInput - threshold;
-        float compressed = threshold + excess / ratio;
-
-        return buffer * (compressed / absInput);
+        return x * gain;
     }
 };
 
@@ -89,55 +154,78 @@ public:
 
     GainBlock(float t) : amount(t) {}
 
-    float Render(float buffer) override {
-        float sample = buffer * amount;
-
-        sample = std::max(-1.0f, std::min(1.0f, sample));
-        return sample;
+    float Process(float buffer) override {
+        return buffer * amount;
     }
 };
 
 class GatingBlock : public Block {
 public:
-    float threshold;
+    float threshold = 0.05f;
+    float env = 0.0f;
+    float attack = 0.01f;
+    float release = 0.05f;
 
     GatingBlock(float t) : threshold(t) {}
 
-    float Render(float buffer) override {
-        if (std::fabs(buffer) < threshold)
-            return 0.0f;
+    float Process(float x) override {
+        float level = std::fabs(x);
+        float coeff = level > env ? attack : release;
+        env += coeff * (level - env);
 
-        return buffer;
+        return (env < threshold) ? 0.0f : x;
     }
 };
 
 class ReverbBlock : public Block {
 public:
-    float intensity;
-    int sample_rate;
-    int delay_samples;
-    float feedback;
-    std::deque<float> buffer;
+    int sample_rate = 44100;
+    float room_size = 0.5f;
+    float damp = 0.5f;
+    float wet = 0.3f;
+    float dry = 0.7f;
 
-    ReverbBlock(float i, int sr) : intensity(i), sample_rate(sr), delay_samples((int)(i * 2000.0f * sr / 1000.0f)), feedback(i * 0.8f) {
-        delay_samples = std::max(1, delay_samples);
+    static constexpr int NUM_COMBS = 4;
+    static constexpr int NUM_ALLPASS = 2;
+
+    CombFilter combs[NUM_COMBS];
+    AllPassFilter allpass[NUM_ALLPASS];
+
+    ReverbBlock(float intensity, int sr) : sample_rate(sr) {
+        room_size = std::max(-1.0f, std::min(1.0f, intensity));
     }
 
-    float Render(float buffer) override {
-        float delayed = 0.0f;
+    void Start() override {
+        int comb_delays[NUM_COMBS] = { 1557, 1617, 1491, 1422 };
+        int allpass_delays[NUM_ALLPASS] = { 225, 556 };
 
-        if (this->buffer.size() >= delay_samples) {
-            delayed = this->buffer.front();
-            this->buffer.pop_front();
+        for (int i = 0; i < NUM_COMBS; ++i) {
+            int d = int(comb_delays[i] * room_size);
+            combs[i].Init(d, 0.7f + room_size * 0.2f, damp);
         }
 
-        float feedback_sample = buffer + delayed * feedback;
-        this->buffer.push_back(feedback_sample);
+        for (int i = 0; i < NUM_ALLPASS; ++i) {
+            allpass[i].Init(allpass_delays[i], 0.5f);
+        }
+    }
 
-        float output = buffer + delayed * 0.5f;
-        return output;
+    float Process(float input) override {
+        float sum = 0.0f;
+
+        for (int i = 0; i < NUM_COMBS; ++i)
+            sum += combs[i].Process(input);
+
+        sum *= (1.0f / NUM_COMBS);
+
+        for (int i = 0; i < NUM_ALLPASS; ++i)
+            sum = allpass[i].Process(sum);
+
+        return input * dry + sum * wet;
     }
 };
+
+#pragma endregion
+#pragma region Manager
 
 class BlocksManager {
 public:
@@ -153,13 +241,17 @@ public:
                 blocks.push_back(CreateBlockFromLine(line));
             }
         }
+
+        for (size_t i = 0; i < blocks.size(); ++i) {
+            blocks.at(i).get()->Start();
+        }
     }
 
-    float Render(float* buffer) {
+    float Process(float* buffer) {
         float current_buffer = *buffer;
 
         for (size_t i = 0; i < blocks.size(); ++i) {
-            current_buffer = blocks.at(i).get()->Render(current_buffer);
+            current_buffer = blocks.at(i).get()->Process(current_buffer);
         }
 
         return current_buffer;

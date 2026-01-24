@@ -637,7 +637,7 @@ extern "C" {
         size_t totalSamples = resampledFrames * renderChannels;
         for (size_t i = 0; i < totalSamples; ++i) {
             size_t c = i % renderChannels;
-            finalBuffer[i] = managers[c].Render(&finalBuffer[i]);
+            finalBuffer[i] = managers[c].Process(&finalBuffer[i]);
         }
 
         if (is_format_float(pwfx) && pwfx->wBitsPerSample == 32) {
@@ -865,7 +865,7 @@ extern "C" {
 
             for (size_t i = 0; i < outFrames * renderChannels; ++i) {
                 size_t c = i % renderChannels;
-                toRender[i] = managers[c].Render(&toRender[i]);
+                toRender[i] = managers[c].Process(&toRender[i]);
             }
 
             find_volume(channel_name, toRender, outFrames * renderChannels);
@@ -1133,7 +1133,7 @@ extern "C" {
 
             for (size_t i = 0; i < outFrames * wfRender->nChannels; ++i) {
                 size_t c = i % wfRender->nChannels;
-                outBuffer[i] = managers[c].Render(&outBuffer[i]);
+                outBuffer[i] = managers[c].Process(&outBuffer[i]);
             }
 
             find_volume(channel_name, outBuffer, outFrames * wfRender->nChannels);

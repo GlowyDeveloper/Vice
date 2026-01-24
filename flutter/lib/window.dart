@@ -29,7 +29,7 @@ class _WindowState extends State<Window> {
       {"title": "Soundboard", "page": WindowPage.Soundboard},
       {"title": "Settings", "page": WindowPage.Settings},
       if (settings.monitor) {"title": "Performance", "page": WindowPage.Performance},
-      {"title": "Blocks", "page": WindowPage.Blocks},
+      {"title": "Effects", "page": WindowPage.Blocks},
     ];
     
     return Scaffold(
