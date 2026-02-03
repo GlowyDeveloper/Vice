@@ -18,7 +18,8 @@ pub(crate) struct SoundboardSFX {
     pub(crate) name: String,
     pub(crate) icon: String,
     pub(crate) color: [u8; 3],
-    pub(crate) lowlatency: bool
+    pub(crate) lowlatency: bool,
+    pub(crate) keys: Vec<String>
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone, Default)]
@@ -207,6 +208,16 @@ pub(crate) fn fix_soundeffect(broken: Value) -> SoundboardSFX {
 
     if let Some(lowlatency) = broken.get("lowlatency").and_then(|v| v.as_bool()) {
         sfx.lowlatency = lowlatency;
+    }
+
+    if let Some(broken_keys) = broken.get("keys").and_then(|v| v.as_array()) {
+        let mut keys: Vec<String> = vec![];
+        for v in broken_keys {
+            let str: String = v.as_str().unwrap_or_default().into();
+            keys.push(str);
+        }
+
+        sfx.keys = keys;
     }
 
     sfx

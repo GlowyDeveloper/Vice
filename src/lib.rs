@@ -1,10 +1,14 @@
-use std::{io::Cursor, rc::Rc, cell::RefCell, thread};
+use std::{cell::RefCell, collections::HashMap, io::Cursor, rc::Rc, thread, time::Duration};
+use device_query::{DeviceQuery, DeviceState};
+use global_hotkey::{GlobalHotKeyEvent, GlobalHotKeyManager, HotKeyState, hotkey::{Code, HotKey, Modifiers}};
 use rust_embed::RustEmbed;
 use serde_json::json;
 use tao::{event::{Event, WindowEvent}, event_loop::{ControlFlow, EventLoopBuilder, EventLoopProxy, EventLoopWindowTarget}, window::{Icon, Window, WindowBuilder}};
 use tiny_http::{Header, Response, Server};
 use tray_icon::{Icon as TrayIcon, TrayIconBuilder, menu::{Menu, MenuEvent, MenuItem}};
 use wry::{WebContext, WebView, WebViewBuilder};
+
+use crate::files::SoundboardSFX;
 
 mod funcs;
 mod performance;
@@ -16,16 +20,24 @@ mod files;
 struct Assets;
 
 #[derive(Default)]
+struct Keys {
+    manager: Option<GlobalHotKeyManager>,
+    hotkeys: HashMap<HotKey, String>
+}
+
+#[derive(Default)]
 pub struct App {
     window: Option<Window>,
     webview: Option<WebView>,
-    web_context: Option<WebContext>
+    web_context: Option<WebContext>,
+    keys: Keys
 }
 
 #[derive(PartialEq)]
 pub enum ServerCommand {
     CreateWindow,
     IpcRequest { id: String, cmd: String, args: serde_json::Value },
+    GenerateKeybinds
 }
 
 const ICON: &[u8] = include_bytes!("../icons/icon.ico");
@@ -73,14 +85,21 @@ fn handle_ipc(cmd: &str, args: serde_json::Value) -> serde_json::Value {
                 if let Some(name) = args.get("name").and_then(|v| v.as_str()) {
                     if let Some(sound) = args.get("sound").and_then(|v| v.as_str()) {
                         if let Some(low) = args.get("low").and_then(|v| v.as_bool()) {
-                            let res = funcs::new_sound(
-                                color,
-                                icon.to_string(),
-                                name.to_string(),
-                                sound.to_string(),
-                                low,
-                            );
-                            return json!({"result": res});
+                            if let Some(key) = args.get("keys").and_then(|v| v.as_array()) {
+                                let mut keys: Vec<String> = vec![];
+                                for (i, val) in key.iter().enumerate() {
+                                    keys[i] = val.as_str().unwrap_or_default().into();
+                                }
+                                let res = funcs::new_sound(
+                                    color,
+                                    icon.to_string(),
+                                    name.to_string(),
+                                    sound.to_string(),
+                                    low,
+                                    keys
+                                );
+                                return json!({"result": res});
+                            }
                         }
                     }
                 }
@@ -125,14 +144,21 @@ fn handle_ipc(cmd: &str, args: serde_json::Value) -> serde_json::Value {
                 if let Some(name) = args.get("name").and_then(|v| v.as_str()) {
                     if let Some(oldname) = args.get("oldname").and_then(|v| v.as_str()) {
                         if let Some(low) = args.get("low").and_then(|v| v.as_bool()) {
-                            let res = funcs::edit_soundboard(
-                                color,
-                                icon.to_string(),
-                                name.to_string(),
-                                oldname.to_string(),
-                                low,
-                            );
-                            return json!({"result": res});
+                            if let Some(key) = args.get("keys").and_then(|v| v.as_array()) {
+                                let mut keys: Vec<String> = vec![];
+                                for (_, val) in key.iter().enumerate() {
+                                    keys.push(val.as_str().unwrap_or_default().into());
+                                }
+                                let res = funcs::edit_soundboard(
+                                    color,
+                                    icon.to_string(),
+                                    name.to_string(),
+                                    oldname.to_string(),
+                                    low,
+                                    keys,
+                                );
+                                return json!({"result": res});
+                            }
                         }
                     }
                 }
@@ -235,6 +261,36 @@ fn handle_ipc(cmd: &str, args: serde_json::Value) -> serde_json::Value {
         if let Some(url) = args.get("url").and_then(|v| v.as_str()) {
             return json!({"result": open::that(url).map_err(|e| e.to_string())});
         }
+    } else if cmd == "key_bind_select" {
+        let device_state = DeviceState::new();
+        let mut final_keys: Vec<String> = Vec::new();
+
+        loop {
+            if device_state.get_keys().is_empty() { break; }
+            thread::sleep(Duration::from_millis(50));
+        }
+
+        loop {
+            let keys = device_state.get_keys();
+            if !keys.is_empty() { break; }
+            thread::sleep(Duration::from_millis(20));
+        }
+
+        loop {
+            let current_keys = device_state.get_keys();
+
+            if current_keys.is_empty() && !final_keys.is_empty() {
+                break;
+            }
+
+            if current_keys.len() > final_keys.len() {
+                final_keys = current_keys.iter().map(|k| format!("{:?}", k)).collect();
+            }
+
+            thread::sleep(Duration::from_millis(10));
+        }
+
+        return json!({"result": final_keys});
     }
 
     serde_json::Value::Null
@@ -272,6 +328,124 @@ pub fn create_icon() -> Option<(Vec<u8>, u32, u32)> {
             return None;
         }
     };
+}
+
+fn string_to_code_or_mod(string: String) -> (Option<Code>, Option<Modifiers>) {
+    let modifier = match string.as_str() {
+        "LControl" => Some(Modifiers::CONTROL),
+        "RControl" => Some(Modifiers::CONTROL),
+        "LAlt" => Some(Modifiers::ALT),
+        "RAlt" => Some(Modifiers::ALT),
+        "LShift" => Some(Modifiers::SHIFT),
+        "RShift" => Some(Modifiers::SHIFT),
+        "CapsLock" => Some(Modifiers::CAPS_LOCK),
+        _ => None
+    };
+    if modifier.is_some() {
+        return (None, modifier);
+    }
+
+    let key = match string.as_str() {
+        "A" => Some(Code::KeyA),
+        "B" => Some(Code::KeyB),
+        "C" => Some(Code::KeyC),
+        "D" => Some(Code::KeyD),
+        "E" => Some(Code::KeyE),
+        "F" => Some(Code::KeyF),
+        "G" => Some(Code::KeyG),
+        "H" => Some(Code::KeyH),
+        "I" => Some(Code::KeyI),
+        "J" => Some(Code::KeyJ),
+        "K" => Some(Code::KeyK),
+        "L" => Some(Code::KeyL),
+        "M" => Some(Code::KeyM),
+        "N" => Some(Code::KeyN),
+        "O" => Some(Code::KeyO),
+        "P" => Some(Code::KeyP),
+        "Q" => Some(Code::KeyQ),
+        "R" => Some(Code::KeyR),
+        "S" => Some(Code::KeyS),
+        "T" => Some(Code::KeyT),
+        "U" => Some(Code::KeyU),
+        "V" => Some(Code::KeyV),
+        "W" => Some(Code::KeyW),
+        "X" => Some(Code::KeyX),
+        "Y" => Some(Code::KeyY),
+        "Z" => Some(Code::KeyZ),
+
+        "F1" => Some(Code::F1),
+        "F2" => Some(Code::F2),
+        "F3" => Some(Code::F3),
+        "F4" => Some(Code::F4),
+        "F5" => Some(Code::F5),
+        "F6" => Some(Code::F6),
+        "F7" => Some(Code::F7),
+        "F8" => Some(Code::F8),
+        "F9" => Some(Code::F9),
+        "F10" => Some(Code::F10),
+        "F11" => Some(Code::F11),
+        "F12" => Some(Code::F12),
+
+        "Minus" => Some(Code::Minus),
+        "Equal" => Some(Code::Equal),
+        "LeftBracket" => Some(Code::BracketLeft),
+        "RightBracket" => Some(Code::BracketRight),
+        "Backspace" => Some(Code::Backspace),
+        "Enter" => Some(Code::Enter),
+        "Slash" => Some(Code::Slash),
+        "Dot" => Some(Code::Period),
+        "Comma" => Some(Code::Comma),
+        "Semicolon" => Some(Code::Semicolon),
+        "BackSlash" => Some(Code::Backslash),
+        
+        _ => None
+    };
+
+    if key.is_some() {
+        return (key, None);
+    }
+    
+    return (None, None);
+}
+
+fn register_keybinds(app: &Rc<RefCell<App>>) {
+    let mut app = app.borrow_mut();
+    let keys = &mut app.keys;
+    let manager = keys.manager.as_ref().unwrap();
+    let hotkeys: Vec<HotKey> = keys.hotkeys.keys().cloned().collect();
+
+    if let Err(e) = manager.unregister_all(&hotkeys) {
+        eprintln!("Failed to unregister keybinds: {}", e);
+        return;
+    }
+    let _ = &keys.hotkeys.clear();
+
+    let sfxs = files::get_soundboard();
+    for sfx in sfxs {
+        let sfxkeys: Vec<String> = sfx.keys;
+        let mut codes: Option<Code> = None;
+        let mut modifiers: Modifiers = Modifiers::empty();
+
+        for key in sfxkeys {
+            let (code, modif) = string_to_code_or_mod(key);
+            if code.is_some() {
+                codes = code;
+            } else if modif.is_some() {
+                modifiers.insert(modif.unwrap());
+            }
+        }
+
+        if codes.is_none() {
+            continue;
+        }
+
+        let hotkey = HotKey::new(Some(modifiers), codes.unwrap());
+        if let Err(e) = manager.register(hotkey) {
+            eprintln!("Failed to register hotkey: {}", e);
+            continue;
+        }
+        let _ = &keys.hotkeys.insert(hotkey, sfx.name);
+    }
 }
 
 pub fn run_server(ready_tx: &std::sync::mpsc::Sender<()>, proxy: EventLoopProxy<ServerCommand>) {
@@ -429,8 +603,17 @@ pub fn run() {
         .build()
         .expect("Failed to build tray icon");
 
+    let keys = Keys {
+        manager: Some(GlobalHotKeyManager::new().unwrap()),
+        hotkeys: HashMap::new()
+    };
+    app.borrow_mut().keys = keys;
+    register_keybinds(&app);
+
     event_loop.run(move |event, event_loop_target, control_flow| {
-        *control_flow = ControlFlow::Wait;
+        *control_flow = ControlFlow::WaitUntil(
+            std::time::Instant::now() + Duration::from_millis(16)
+        );
 
         match event {
             Event::WindowEvent {
@@ -462,8 +645,9 @@ pub fn run() {
                             Err(e) => eprintln!("Failed to return ipc {:?}", e),
                         }
                     }
-                }
-            }
+                },
+                ServerCommand::GenerateKeybinds => register_keybinds(&app),
+            },
             _ => (),
         }
 
@@ -474,6 +658,37 @@ pub fn run() {
                 create_window(event_loop_target, proxy.clone(), &app, false);
             } else if menu_event.id() == restart.id() {
                 audio::restart();
+            }
+        }
+
+        if let Ok(event) = GlobalHotKeyEvent::receiver().try_recv() {
+            if event.state == HotKeyState::Pressed {
+                let hotkeys: Vec<HotKey> = app.borrow_mut().keys.hotkeys.keys().cloned().collect();
+                let mut name: String = String::new();
+                for hotkey in &hotkeys {
+                    if hotkey.id == event.id {
+                        if let Some(pos) = hotkeys.iter().position(|h| h == hotkey) {
+                            let names: Vec<String> = app.borrow_mut().keys.hotkeys.values().cloned().collect();
+                            if let Some(n) = names.get(pos) {
+                                name = n.to_string();
+                                break;
+                            } else {
+                                eprintln!("Failed to get name of hotkey");
+                                break;
+                            }
+                        } else {
+                            eprintln!("Hotkey not found");
+                            break;
+                        }
+                    }
+                }
+
+                let sfxs: Vec<SoundboardSFX> = files::get_soundboard();
+                if let Some(pos) = sfxs.iter().position(|s| s.name == name) {
+                    if let Some(sfx) = sfxs.get(pos) {
+                        funcs::play_sound(name, sfx.lowlatency);
+                    }
+                }
             }
         }
     });

@@ -122,6 +122,7 @@ class SFXsChannels {
   final bool? deviceOrApp;
   final bool? lowlatency;
   final double? volume;
+  final List<String>? keys;
 
   SFXsChannels({
     this.name,
@@ -130,13 +131,19 @@ class SFXsChannels {
     this.color,
     this.deviceOrApp,
     this.lowlatency,
-    this.volume
+    this.volume,
+    this.keys
   });
 
   factory SFXsChannels.fromMap(Map<String, dynamic> map) {
     List<int>? parsedColor = [0, 0, 0];
     if (map["color"] is List) {
       parsedColor = List<int>.from(map["color"]);
+    }
+
+    List<String> parsedKeys = [];
+    if (map["keys"] is List) {
+      parsedKeys = List<String>.from(map["keys"]);
     }
 
     return SFXsChannels(
@@ -146,7 +153,8 @@ class SFXsChannels {
       color: parsedColor,
       deviceOrApp: map["deviceorapp"],
       lowlatency: map["lowlatency"],
-      volume: map["volume"]
+      volume: map["volume"],
+      keys: parsedKeys
     );
   }
 }

@@ -17,7 +17,7 @@ pub(crate) fn new_channel(color: [u8; 3], icon: String, name: String, deviceapps
     return files::save_channels(channels).map(|_| audio::restart());
 }
 
-pub(crate) fn new_sound(color: [u8; 3], icon: String, name: String, sound: String, low: bool) -> Result<(), String> {
+pub(crate) fn new_sound(color: [u8; 3], icon: String, name: String, sound: String, low: bool, keys: Vec<String>) -> Result<(), String> {
     let mut sfxs: Vec<SoundboardSFX> = files::get_soundboard();
     
     let ext = Path::new(&sound)
@@ -25,8 +25,8 @@ pub(crate) fn new_sound(color: [u8; 3], icon: String, name: String, sound: Strin
 
     match ext {
         None => {
-            eprintln!("Failed to get extnetion for soundeffect \"{}\"", name);
-            return Err(format!("Failed to get extnetion for soundeffect \"{}\"", name));
+            eprintln!("Failed to get extension for soundeffect \"{}\"", name);
+            return Err(format!("Failed to get extension for soundeffect \"{}\"", name));
         }
         Some(o) => {
             if let Err(e) = fs::copy(&sound, files::sfx_base().join(format!("{}.{}", name, o.to_str().unwrap_or("wav")).to_string())) {
@@ -36,7 +36,7 @@ pub(crate) fn new_sound(color: [u8; 3], icon: String, name: String, sound: Strin
         }
     }
 
-    let sfx: SoundboardSFX = SoundboardSFX{name, icon, color, lowlatency: low};
+    let sfx: SoundboardSFX = SoundboardSFX{name, icon, color, lowlatency: low, keys};
 
     sfxs.push(sfx);
     return files::save_soundboard(sfxs);
@@ -56,11 +56,11 @@ pub(crate) fn edit_channel(color: [u8; 3], icon: String, name: String, deviceapp
     return files::save_channels(channels).map(|_| audio::restart());
 }
 
-pub(crate) fn edit_soundboard(color: [u8; 3], icon: String, name: String, oldname: String, low: bool) -> Result<(), String> {
+pub(crate) fn edit_soundboard(color: [u8; 3], icon: String, name: String, oldname: String, low: bool, keys: Vec<String>) -> Result<(), String> {
     let mut sfxs: Vec<SoundboardSFX> = files::get_soundboard();
 
     if let Some(pos) = sfxs.iter().position(|c: &SoundboardSFX| c.name == oldname) {
-        sfxs[pos] = SoundboardSFX{name, icon, color, lowlatency: low};
+        sfxs[pos] = SoundboardSFX{name, icon, color, lowlatency: low, keys};
     } else {
         eprintln!("Soundeffect \"{}\" not found", oldname);
         return Err(format!("Soundeffect \"{}\" not found", oldname));

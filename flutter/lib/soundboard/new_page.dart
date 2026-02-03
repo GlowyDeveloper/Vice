@@ -16,9 +16,11 @@ class _SoundboardNewState extends State<SoundboardNew> {
   Color pickerColor = Color(0xFFFF0000);
   Color currentColor = Color(0xFFFF0000);
   String icon = "question_mark";
+  List<String> Keys = [];
   final TextEditingController controllerName = TextEditingController();
   final TextEditingController controllerSound = TextEditingController();
   final ScrollController scrollController = ScrollController();
+  final TextEditingController controllerKeybind = TextEditingController();
   bool lowlatency = false;
   
   void changeColor(Color color) {
@@ -31,9 +33,18 @@ class _SoundboardNewState extends State<SoundboardNew> {
       "icon": icon,
       "name": controllerName.text,
       "low": lowlatency,
-      "sound": controllerSound.text});
+      "sound": controllerSound.text,
+      "keys": Keys});
     
     SoundboardPageClass.setPage(SoundboardMain());
+  }
+
+  Future<void> key_bind() async {
+    final List<String> keys_polled = await invokeJS("key_bind_select");
+    if (keys_polled.isEmpty == false) {
+      Keys = keys_polled;
+      controllerKeybind.text = keys_polled.join("+");
+    }
   }
 
   @override
@@ -173,6 +184,36 @@ class _SoundboardNewState extends State<SoundboardNew> {
                       ],
                     )
                   ),
+                ],
+              ),
+
+              const SizedBox(height: 20),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: controllerKeybind,
+                      style: TextStyle(color: text),
+                      decoration: InputDecoration(
+                        border: const OutlineInputBorder(),
+                        focusedBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: accent),
+                        ),
+                        labelText: "Enter Keybind",
+                        labelStyle: TextStyle(color: accent),
+                        filled: true,
+                        fillColor: bg_light,
+                      ),
+                    )
+                  ),
+
+                  const SizedBox(width: 16),
+
+                  IconButton(
+                    onPressed: key_bind,
+                    icon: Icon(Icons.keyboard, color: text, size: 96)
+                  )
                 ],
               ),
 
