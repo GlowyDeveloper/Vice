@@ -42,7 +42,7 @@ pub enum ServerCommand {
 
 const ICON: &[u8] = include_bytes!("../icons/icon.ico");
 
-fn handle_ipc(cmd: &str, args: serde_json::Value) -> serde_json::Value {
+fn handle_ipc(cmd: &str, args: serde_json::Value, app: &Rc<RefCell<App>>) -> serde_json::Value {
     if cmd == "get_soundboard" {
         let soundboard = files::get_soundboard();
         return json!({"result": soundboard});
@@ -97,7 +97,7 @@ fn handle_ipc(cmd: &str, args: serde_json::Value) -> serde_json::Value {
                                     sound.to_string(),
                                     low,
                                     keys
-                                );
+                                ).map(|_| {register_keybinds(&app)});
                                 return json!({"result": res});
                             }
                         }
@@ -156,7 +156,7 @@ fn handle_ipc(cmd: &str, args: serde_json::Value) -> serde_json::Value {
                                     oldname.to_string(),
                                     low,
                                     keys,
-                                );
+                                ).map(|_| {register_keybinds(&app)});
                                 return json!({"result": res});
                             }
                         }
@@ -627,7 +627,7 @@ pub fn run() {
             Event::UserEvent(e) => match e {
                 ServerCommand::CreateWindow => create_window(event_loop_target, proxy.clone(), &app, false),
                 ServerCommand::IpcRequest { id, cmd, args } => {
-                    let res = handle_ipc(&cmd, args);
+                    let res = handle_ipc(&cmd, args, &app);
                     if let Some(webview) = &app.borrow().webview {
                         let result_value = match res.get("result") {
                             Some(v) => v.clone(),
@@ -658,6 +658,7 @@ pub fn run() {
                 create_window(event_loop_target, proxy.clone(), &app, false);
             } else if menu_event.id() == restart.id() {
                 audio::restart();
+                register_keybinds(&app);
             }
         }
 
