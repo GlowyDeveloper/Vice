@@ -1,6 +1,6 @@
 use std::{
     env, fs, io::Write,
-    path::PathBuf, process::Command
+    path::PathBuf, process::{Command, Stdio}
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -62,7 +62,8 @@ impl Default for Settings {
     }
 }
 
-const EMBEDDED_BIN: &[u8] = include_bytes!("../updater/target/release/updater.exe");
+const EMBEDDED_UPDATER: &[u8] = include_bytes!("../updater/target/release/updater.exe");
+const EMBEDDED_UI: &[u8] = include_bytes!("../Ui/bin/Release/net10.0/win-x64/publish/Vice.Ui.exe");
 
 pub(crate) fn app_base() -> PathBuf {
     let base = env::var("APPDATA");
@@ -82,6 +83,10 @@ pub(crate) fn sfx_base() -> PathBuf {
 
 pub(crate) fn blocks_base() -> PathBuf {
     app_base().join("Blocks")
+}
+
+fn bins_base() -> PathBuf {
+    app_base().join("Bins")
 }
 
 fn settings_json() -> PathBuf {
@@ -128,6 +133,14 @@ pub(crate) fn create_files() {
     if !blocks_path.exists() {
         if let Err(e) = fs::create_dir_all(blocks_path) {
             eprintln!("Failed to create blocks directory: {}", e);
+        }
+    }
+
+    let bins_path: PathBuf = bins_base();
+
+    if !bins_path.exists() {
+        if let Err(e) = fs::create_dir_all(bins_path) {
+            eprintln!("Failed to create bins directory: {}", e);
         }
     }
 
@@ -406,7 +419,7 @@ pub(crate) fn extract_updater(arg: &str, path: PathBuf, debug: &str) -> Result<S
     temp_path.push(&filename);
 
     let mut file = fs::File::create(&temp_path).unwrap();
-    let _ = file.write_all(EMBEDDED_BIN);
+    let _ = file.write_all(EMBEDDED_UPDATER);
 
     #[cfg(unix)]
     {
@@ -503,4 +516,58 @@ pub(crate) fn manage_startup() {
             }
         }
     }
+}
+
+pub(crate) fn check_if_ui_is_installed() {
+    let path = bins_base().join(format!("Vice.Ui-v{}.exe", env!("CARGO_PKG_VERSION")));
+
+    if path.exists() {
+        return;
+    }
+
+    for entry in fs::read_dir(bins_base()).unwrap_or_else(|_| panic!("Failed to read bins directory")) {
+        if let Ok(entry) = entry {
+            let file_name = entry.file_name();
+            let file_name_str = file_name.to_string_lossy();
+
+            if file_name_str.starts_with("Vice.Ui") && file_name_str.ends_with(".exe") {
+                let _ = fs::remove_file(entry.path());
+            }
+        }
+    }
+
+    let mut file = fs::File::create(&path).unwrap();
+    let _ = file.write_all(EMBEDDED_UI);
+}
+
+pub(crate) fn run_ui() {
+    let path = bins_base().join(format!("Vice.Ui-v{}.exe", env!("CARGO_PKG_VERSION")));
+
+    let child = Command::new(path)
+        .stdin(Stdio::piped())
+        .stderr(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .map_err(|e| eprintln!("Failed to start UI: {}", e));
+
+    if child.is_err() {
+        return;
+    }
+
+    let mut child = child.unwrap();
+
+    child.stdin
+        .as_mut()
+        .ok_or("Child process stdin has not been captured!")
+        .unwrap()
+        .write_all(b"something...")
+        .unwrap();
+
+    let output = child.wait_with_output();
+
+    println!("UI process exited with: {:#?}", output);
+
+    //let _ = Command::new("cmd")
+    //    .args(["/C", "start", "", &path.to_string_lossy().to_string()])
+    //   .spawn();
 }

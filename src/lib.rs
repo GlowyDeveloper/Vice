@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap, io::Cursor, rc::Rc, thread, time::Duration};
+/*use std::{cell::RefCell, collections::HashMap, io::Cursor, rc::Rc, thread, time::Duration};
 use device_query::{DeviceQuery, DeviceState};
 use global_hotkey::{GlobalHotKeyEvent, GlobalHotKeyManager, HotKeyState, hotkey::{Code, HotKey, Modifiers}};
 use rust_embed::RustEmbed;
@@ -693,4 +693,17 @@ pub fn run() {
             }
         }
     });
+}*/
+
+mod files;
+
+pub fn run() {
+    let args: Vec<String> = std::env::args().collect();
+    
+    files::create_files();
+    
+    if args.contains(&"ui".to_string()) {
+        files::check_if_ui_is_installed();
+        files::run_ui();
+    }
 }

@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/128.png" width="128px" />
+<img src="docs/icon.png" width="128px"  alt="Vice's logo"/>
 
 # Vice
 ### A Powerful Audio Mixer For Windows
