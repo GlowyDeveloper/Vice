@@ -40,8 +40,6 @@ pub enum ServerCommand {
     GenerateKeybinds
 }
 
-const ICON: &[u8] = include_bytes!("../icons/icon.ico");
-
 fn handle_ipc(cmd: &str, args: serde_json::Value, app: &Rc<RefCell<App>>) -> serde_json::Value {
     if cmd == "get_soundboard" {
         let soundboard = files::get_soundboard();
@@ -294,40 +292,6 @@ fn handle_ipc(cmd: &str, args: serde_json::Value, app: &Rc<RefCell<App>>) -> ser
     }
 
     serde_json::Value::Null
-}
-
-pub fn create_icon() -> Option<(Vec<u8>, u32, u32)> {
-    let reader = Cursor::new(ICON);
-    let icon_dir = match ico::IconDir::read(reader) {
-        Ok(i) => i,
-        Err(e) => {
-            println!("Error occured when getting ico: {:#?}", e);
-            return None;
-        }
-    };
-
-    let entry = icon_dir
-        .entries()
-        .iter()
-        .max_by_key(|e| e.width());
-        
-    let image = match entry {
-        Some(i) => i,
-        None => {
-            println!("Failed to get an entry in ico");
-            return None;
-        }
-    };
-
-    match image.decode() {
-        Ok(i) => {
-            return Some((i.rgba_data().to_vec(), i.width(), i.height()));
-        }
-        Err(e) => {
-            println!("Failed to decode icon: {:#?}", e);
-            return None;
-        }
-    };
 }
 
 fn string_to_code_or_mod(string: String) -> (Option<Code>, Option<Modifiers>) {
@@ -584,25 +548,6 @@ pub fn run() {
     let app = Rc::new(RefCell::new(App::default()));
     create_window(&event_loop, proxy.clone(), &app, hide_window);
 
-    let tray_icon = create_icon().map(|(data, width, height)| TrayIcon::from_rgba(data, width, height).unwrap())
-        .unwrap_or(TrayIcon::from_rgba(vec![0, 0, 0, 0], 1, 1).unwrap());
-
-    let tray_menu = Menu::new();
-    let quit = MenuItem::new("Quit", true, None);
-    let open_ui = MenuItem::new("Open UI", true, None);
-    let restart = MenuItem::new("Restart Audio", true, None);
-    tray_menu.append(&quit).unwrap();
-    tray_menu.append(&open_ui).unwrap();
-    tray_menu.append(&restart).unwrap();
-
-    let _tray = TrayIconBuilder::new()
-        .with_icon(tray_icon)
-        .with_menu(Box::new(tray_menu))
-        .with_tooltip("Vice")
-        .with_title("Vice")
-        .build()
-        .expect("Failed to build tray icon");
-
     let keys = Keys {
         manager: Some(GlobalHotKeyManager::new().unwrap()),
         hotkeys: HashMap::new()
@@ -696,14 +641,28 @@ pub fn run() {
 }*/
 
 mod files;
+mod audio;
+mod performance;
+mod ui;
+mod funcs;
+
+fn is_another_instance() -> Result<bool, String> {
+    Ok(false)
+}
 
 pub fn run() {
-    let args: Vec<String> = std::env::args().collect();
-    
+    if is_another_instance().unwrap_or(false) {
+        //call other instance
+        std::process::exit(0);
+    }
+
+    audio::start();
+    performance::start();
     files::create_files();
-    
-    if args.contains(&"ui".to_string()) {
-        files::check_if_ui_is_installed();
-        files::run_ui();
+    ui::check_if_ui_is_installed();
+
+    let args: Vec<String> = std::env::args().collect();
+    if !args.contains(&"--background".to_string()) {
+        ui::run_ui();
     }
 }

@@ -9,6 +9,10 @@
         <SelfContained>true</SelfContained>
         <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
         <PublishTrimmed>true</PublishTrimmed>
+
+        <AssemblyTitle>Vice Ui</AssemblyTitle>
+        <AssemblyProduct>Vice Ui</AssemblyProduct>
+        <AssemblyDescription>User interface for Vice</AssemblyDescription>
     </PropertyGroup>
 
     <ItemGroup>
@@ -24,5 +28,6 @@
             <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
             <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
         </PackageReference>
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     </ItemGroup>
 </Project>

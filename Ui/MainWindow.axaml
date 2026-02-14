@@ -105,51 +105,6 @@
                     </SplitView.Content>
                 </SplitView>
             </Grid>
-
-            <!--<SplitView IsPaneOpen="{Binding IsPaneOpen}"
-                OpenPaneLength="300"
-                CompactPaneLength="48"
-                DisplayMode="CompactInline"
-                Grid.Row="1"
-                Grid.ColumnSpan="2"
-                PaneBackground="Transparent">
-                <SplitView.Pane>
-                    <DockPanel Margin="5">
-                        <sideitem:SidebarItem
-                            DockPanel.Dock="Bottom"
-                            x:Name="SettingsItem"
-                            Text=" Settings"
-                            Icon="{StaticResource settings_regular}"
-                            Margin="0,2,0,0"/>
-                    
-                        <StackPanel Spacing="5">
-                            <Button x:Name="SidebarOpen" Background="Transparent">
-                                <PathIcon Data="{StaticResource line_horizontal_3_regular}"></PathIcon>
-                            </Button>
-    
-                            <sideitem:SidebarItem x:Name="ChannelsItem" Text=" Channels" Icon="{StaticResource mic_on_regular}" Margin="0,2,0,0"/>
-                            <sideitem:SidebarItem x:Name="SfxsItem" Text=" Sfxs" Icon="{StaticResource music_regular}" Margin="0,2,0,0"/>
-                            <sideitem:SidebarItem x:Name="EffectsItem" Text=" Effects" Icon="{StaticResource magic_wand_regular}" Margin="0,2,0,0"/>
-                            <sideitem:SidebarItem x:Name="PerformanceItem" Text=" Performance" Icon="{StaticResource top_speed_regular}" Margin="0,2,0,0"/>
-                        </StackPanel>
-                    </DockPanel>
-                </SplitView.Pane>
-                <SplitView.Content>
-                    <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-                        <ExperimentalAcrylicBorder IsHitTestVisible="False" CornerRadius="12,0,0,0" ClipToBounds="True" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-                            <ExperimentalAcrylicBorder.Material>
-                                <ExperimentalAcrylicMaterial
-                                    BackgroundSource="Digger"
-                                    TintColor="Black"
-                                    TintOpacity="1"
-                                    MaterialOpacity="0.65"/>
-                            </ExperimentalAcrylicBorder.Material>
-                        </ExperimentalAcrylicBorder>
-    
-                        <ContentControl x:Name="PageHost" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
-                    </Grid>
-                </SplitView.Content>
-            </SplitView>-->
         </Grid>
     </Panel>
 </Window>
