@@ -190,15 +190,18 @@ fn handle_ipc(cmd: &str, args: serde_json::Value, app: &Rc<RefCell<App>>) -> ser
                     if let Some(monitor) = args.get("monitor").and_then(|v| v.as_bool()) {
                         if let Some(peaks) = args.get("peaks").and_then(|v| v.as_bool()) {
                             if let Some(startup) = args.get("startup").and_then(|v| v.as_bool()) {
-                                let res = funcs::save_settings(
-                                    output.to_string(),
-                                    scale as f32,
-                                    light,
-                                    monitor,
-                                    peaks,
-                                    startup
-                                );
-                                return json!({"result": res});
+                                if let Some(tray) = args.get("tray").and_then(|v| v.as_bool()) {
+                                    let res = funcs::save_settings(
+                                        output.to_string(),
+                                        scale as f32,
+                                        light,
+                                        monitor,
+                                        peaks,
+                                        startup,
+                                        tray
+                                    );
+                                    return json!({"result": res});
+                                }
                             }
                         }
                     }
@@ -620,9 +623,14 @@ pub fn run() {
                 event: WindowEvent::CloseRequested,
                 ..
             } => {
-                app.try_borrow_mut().unwrap().window = None;
-                app.try_borrow_mut().unwrap().webview = None;
-                app.try_borrow_mut().unwrap().web_context = None;
+                let settings = files::get_settings();
+                if settings.tray {
+                    app.try_borrow_mut().unwrap().window = None;
+                    app.try_borrow_mut().unwrap().webview = None;
+                    app.try_borrow_mut().unwrap().web_context = None;
+                } else {
+                    std::process::exit(0);
+                }
             },
             Event::UserEvent(e) => match e {
                 ServerCommand::CreateWindow => create_window(event_loop_target, proxy.clone(), &app, false),

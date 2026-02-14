@@ -20,6 +20,7 @@ class _SettingsPageState extends State<SettingsPage> {
   bool monitor = false;
   bool peaks = true;
   bool startup = false;
+  bool stayInTray = true;
 
   @override
   void initState() {
@@ -37,6 +38,7 @@ class _SettingsPageState extends State<SettingsPage> {
       monitor = settings.monitor;
       peaks = settings.peaks;
       startup = settings.startup;
+      stayInTray = settings.stayInTray;
     });
 	}
 
@@ -48,6 +50,7 @@ class _SettingsPageState extends State<SettingsPage> {
       settings.monitor = monitor;
       settings.peaks = peaks;
       settings.startup = startup;
+      settings.stayInTray = stayInTray;
     });
 
     await settings.saveSettings(context);
@@ -193,6 +196,17 @@ class _SettingsPageState extends State<SettingsPage> {
                           setState(() => startup = value);
                         },
                       ),
+
+                      const SizedBox(height: 10),
+
+                      SwitchListTile(
+                        title: Text("Stay in system tray:", style: TextStyle(fontSize: 18, color: text)),
+                        value: stayInTray,
+                        activeColor: accent,
+                        onChanged: (value) {
+                          setState(() => stayInTray = value);
+                        },
+                      ),
                     ],
                   ),
                 ),
@@ -267,6 +281,7 @@ class SettingsData extends ChangeNotifier {
   bool monitor = false;
   bool peaks = true;
   bool startup = false;
+  bool stayInTray = true;
 
 	Future<void> loadSettings() async {
 		final settings = await invokeJS("get_settings");
@@ -276,6 +291,7 @@ class SettingsData extends ChangeNotifier {
     monitor = settings["monitor"];
     peaks = settings["peaks"];
     startup = settings["startup"];
+    stayInTray = settings["tray"];
     if (settings["output"] != null && settings["output"].trim().isNotEmpty) {
       outputDevice = settings["output"];
     }
@@ -293,7 +309,7 @@ class SettingsData extends ChangeNotifier {
   }
 
 	Future<void> saveSettings(BuildContext context) async {
-		await invokeJS("save_settings", {"output": outputDevice, "scale": scale, "light": lightMode, "monitor": monitor, "peaks": peaks, "startup": startup});
+		await invokeJS("save_settings", {"output": outputDevice, "scale": scale, "light": lightMode, "monitor": monitor, "peaks": peaks, "startup": startup, "tray": stayInTray});
 
     notifyListeners();
 

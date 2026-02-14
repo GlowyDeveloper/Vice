@@ -166,6 +166,7 @@ class Settings {
   final bool? monitor;
   final bool? peaks;
   final bool? startup;
+  final bool? tray;
 
   Settings({
     this.output,
@@ -173,7 +174,8 @@ class Settings {
     this.light,
     this.monitor,
     this.peaks,
-    this.startup
+    this.startup,
+    this.tray
   });
 
   factory Settings.fromMap(Map<String, dynamic> map) {
@@ -183,7 +185,8 @@ class Settings {
       light: map["light"],
       monitor: map["monitor"],
       peaks: map["peaks"],
-      startup: map["startup"]
+      startup: map["startup"],
+      tray: map["tray"]
     );
   }
 }

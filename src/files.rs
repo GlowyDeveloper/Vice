@@ -40,7 +40,8 @@ pub(crate) struct Settings {
     pub(crate) light: bool,
     pub(crate) monitor: bool,
     pub(crate) peaks: bool,
-    pub(crate) startup: bool
+    pub(crate) startup: bool,
+    pub(crate) tray: bool
 }
 
 #[derive(Deserialize, Serialize)]
@@ -58,7 +59,7 @@ impl Default for File {
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { output: "".to_string(), scale: 1.0, light: false, monitor: true, peaks: true, startup: false }
+        Settings { output: "".to_string(), scale: 1.0, light: false, monitor: true, peaks: true, startup: false, tray: true }
     }
 }
 
@@ -163,6 +164,10 @@ pub(crate) fn fix_settings(broken: Value) -> Settings {
 
     if let Some(startup) = broken.get("startup").and_then(|v| v.as_bool()) {
         settings.startup = startup;
+    }
+
+    if let Some(tray) = broken.get("tray").and_then(|v| v.as_bool()) {
+        settings.tray = tray;
     }
 
     settings
@@ -327,16 +332,21 @@ pub(crate) fn get_file() -> File {
             Err(e) => {
                 eprintln!("Failed to parse settings file: {}", e);
                 println!("Attempting to fix...");
+
                 match serde_json::from_str::<Value>(&data) {
                     Ok(value) => {
                         let fixed: File = fix_file(value);
+
                         println!("Successfully fixed!");
+
                         let _ = save_file(&fixed);
                         return fixed;
                     }
                     Err(e) => {
                         let fixed: File = File::default();
+
                         println!("Failed to fix the settings file: {}", e);
+
                         let _ = save_file(&fixed);
                         return fixed;
                     }
