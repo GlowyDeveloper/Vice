@@ -11,6 +11,7 @@ class Block {
 public:
     virtual ~Block() = default;
 
+    virtual size_t TailSamples() const { return 0; }
     virtual float Process(float buffer) {return buffer;}
     virtual void Start() {}
 };
@@ -93,6 +94,11 @@ public:
     int write_idx = 0;
 
     DelayBlock(float t_ms, int sr) : time_ms(t_ms), sample_rate(sr) {}
+
+    size_t TailSamples() const override
+    {
+        return delay_samples;
+    }
 
     void Start() override {
         delay_samples = std::max(1, int(time_ms * sample_rate / 1000.0f));
@@ -195,6 +201,11 @@ public:
         room_size = std::max(-1.0f, std::min(1.0f, intensity));
     }
 
+    size_t TailSamples() const override
+    {
+        return 1617 * 10;
+    }
+
     void Start() override {
         int comb_delays[NUM_COMBS] = { 1557, 1617, 1491, 1422 };
         int allpass_delays[NUM_ALLPASS] = { 225, 556 };
@@ -257,6 +268,13 @@ public:
         return current_buffer;
     }
 
+    size_t RequiredTailSamples() const {
+        size_t extra = 0;
+        for (const auto& b : blocks)
+            extra += b->TailSamples();
+        return extra;
+    }
+
 private:
     int sample_rate;
     std::vector<std::unique_ptr<Block>> blocks;
@@ -277,7 +295,7 @@ private:
         }
 
         if (type == "delay")
-            return std::make_unique<DelayBlock>(static_cast<int>(params.at("time")), sample_rate);
+            return std::make_unique<DelayBlock>(params.at("time"), sample_rate);
         if (type == "distortion")
             return std::make_unique<DistortionBlock>(params.at("intensity"));
         if (type == "compression")

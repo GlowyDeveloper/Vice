@@ -584,9 +584,8 @@ extern "C" {
         }
 
         CoInitialize(nullptr);
-        IMMDevice* targetDevice = nullptr;
 
-        targetDevice = find_device_by_name(eRender, device_name);
+        IMMDevice* targetDevice = find_device_by_name(eRender, device_name);
         if (!targetDevice) {
             IMMDeviceEnumerator* pEnum = nullptr;
             CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&pEnum));
@@ -602,12 +601,13 @@ extern "C" {
 
         IAudioClient* audioClient = nullptr;
         if (FAILED(targetDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&audioClient))) {
-            targetDevice->Release(); CoUninitialize(); return;
+            targetDevice->Release();
+            CoUninitialize();
+            return;
         }
 
         WAVEFORMATEX* pwfx = nullptr;
         if (FAILED(audioClient->GetMixFormat(&pwfx)) || !pwfx) {
-            std::cerr << "GetMixFormat failed\n";
             audioClient->Release();
             targetDevice->Release();
             CoUninitialize();
@@ -623,29 +623,38 @@ extern "C" {
 
         float* finalBuffer = remap_channels_interleaved(resampled, resampledFrames, pcm.channels, pwfx->nChannels);
 
-        size_t bytesPerSample = pwfx->wBitsPerSample / 8;
-        size_t bytesPerFrame = pwfx->nChannels * bytesPerSample;
-        size_t totalBytes = resampledFrames * pwfx->nChannels * bytesPerSample;
         int renderChannels = pwfx->nChannels;
-        std::vector<char> outBuffer(totalBytes);
 
         std::vector<BlocksManager> managers(renderChannels);
         for (int c = 0; c < renderChannels; ++c) {
             managers[c].Initialize(path, pwfx->nSamplesPerSec);
         }
 
-        size_t totalSamples = resampledFrames * renderChannels;
-        for (size_t i = 0; i < totalSamples; ++i) {
+        size_t tailFrames = managers[0].RequiredTailSamples();
+        size_t totalFramesWithTail = resampledFrames + tailFrames;
+        size_t totalSamplesWithTail = totalFramesWithTail * renderChannels;
+
+        std::vector<float> processed(totalSamplesWithTail, 0.0f);
+
+        memcpy(processed.data(), finalBuffer, resampledFrames * renderChannels * sizeof(float));
+
+        for (size_t i = 0; i < totalSamplesWithTail; ++i) {
             size_t c = i % renderChannels;
-            finalBuffer[i] = managers[c].Process(&finalBuffer[i]);
+            processed[i] = managers[c].Process(&processed[i]);
         }
 
+        size_t bytesPerSample = pwfx->wBitsPerSample / 8;
+        size_t bytesPerFrame = renderChannels * bytesPerSample;
+        size_t totalBytes = totalFramesWithTail * bytesPerFrame;
+
+        std::vector<char> outBuffer(totalBytes);
+
         if (is_format_float(pwfx) && pwfx->wBitsPerSample == 32) {
-            memcpy(outBuffer.data(), finalBuffer, totalBytes);
+            memcpy(outBuffer.data(), processed.data(), totalBytes);
         } else if (is_format_int32(pwfx)) {
             int32_t* out32 = reinterpret_cast<int32_t*>(outBuffer.data());
-            for (size_t i = 0; i < resampledFrames * pwfx->nChannels; ++i) {
-                float v = std::max(-1.f, std::min(1.f, finalBuffer[i]));
+            for (size_t i = 0; i < totalSamplesWithTail; ++i) {
+                float v = std::max(-1.f, std::min(1.f, processed[i]));
                 out32[i] = static_cast<int32_t>(v * 2147483647.f);
             }
         } else {
