@@ -640,19 +640,18 @@ pub fn run() {
     });
 }*/
 
+use single_instance::SingleInstance;
+
 mod files;
 mod audio;
 mod performance;
 mod ui;
 mod funcs;
 
-fn is_another_instance() -> Result<bool, String> {
-    Ok(false)
-}
-
 pub fn run() {
-    if is_another_instance().unwrap_or(false) {
-        //call other instance
+    let instance = SingleInstance::new("ViceSingleInstance").expect("Failed to create single instance");
+    if !instance.is_single() {
+        ui::call_instance();
         std::process::exit(0);
     }
 
@@ -660,9 +659,12 @@ pub fn run() {
     performance::start();
     files::create_files();
     ui::check_if_ui_is_installed();
+    ui::run_ipc();
 
     let args: Vec<String> = std::env::args().collect();
     if !args.contains(&"--background".to_string()) {
         ui::run_ui();
     }
+
+    std::thread::park();
 }

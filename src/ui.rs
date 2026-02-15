@@ -266,9 +266,27 @@ fn handle_request(cmd: &str, args: serde_json::Value) -> serde_json::Value {
         }
 
         return json!({"result": final_keys});
+    } else if cmd == "reopen_ui" {
+        println!("Reopening UI");
+
+        run_ui();
     }
 
     serde_json::Value::Null
+}
+
+pub(crate) fn call_instance() {
+    let name = "ViceUiPipe".to_ns_name::<GenericNamespaced>().unwrap();
+
+    if let Ok(mut stream) = LocalSocketStream::connect(name) {
+        let request = json!({"cmd": "reopen_ui", "args": {}, "respond": false});
+        stream.write(request.to_string().as_bytes()).unwrap();
+        stream.write(b"\n").unwrap();
+        stream.flush().unwrap();
+        println!("Sent reopen command to instance");
+    } else {
+        eprintln!("Failed to connect to instance");
+    }
 }
 
 pub(crate) fn check_if_ui_is_installed() {
@@ -360,7 +378,7 @@ fn handle_client(mut stream: LocalSocketStream) -> std::io::Result<()> {
     Ok(())
 }
 
-pub fn run_ipc() {
+pub(crate) fn run_ipc() {
     let name = "ViceUiPipe".to_ns_name::<GenericNamespaced>().unwrap();
 
     let listener = ListenerOptions::new()
@@ -370,26 +388,29 @@ pub fn run_ipc() {
 
     println!("Listening for connections…");
 
-    for connection in listener.incoming() {
-        match connection {
-            Ok(stream) => {
-                println!("Client connected");
+    std::thread::Builder::new()
+        .name("IPC Listener".into())
+        .spawn(move || {
+            for connection in listener.incoming() {
+                match connection {
+                    Ok(stream) => {
+                        println!("Client connected");
 
-                std::thread::spawn(move || {
-                    if let Err(e) = handle_client(stream) {
-                        eprintln!("Client error: {}", e);
+                        std::thread::spawn(move || {
+                            if let Err(e) = handle_client(stream) {
+                                eprintln!("Client error: {}", e);
+                            }
+                        });
                     }
-                });
+                    Err(e) => eprintln!("Failed to accept connection: {}", e),
+                }
             }
-            Err(e) => eprintln!("Failed to accept connection: {}", e),
-        }
-    }
+        })
+        .expect("Failed to spawn IPC listener thread");
 }
 
 pub(crate) fn run_ui() {
     let path: PathBuf = files::bins_base().join(format!("Vice.Ui-v{}.exe", env!("CARGO_PKG_VERSION")));
 
     spawn_in_job(&path);
-
-    run_ipc();
 }
