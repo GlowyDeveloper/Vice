@@ -2,7 +2,7 @@ use std::{
     ffi::{CStr, CString, c_char}, fs, sync::atomic::{AtomicBool, Ordering}, thread
 };
 
-use crate::files::{self, Channel};
+use crate::files::{self, Channel, DeviceOrApp};
 
 #[link(name = "audio")]
 unsafe extern "C" {
@@ -214,7 +214,7 @@ pub(crate) fn start() {
                     insert_volume(channel_name, channel.volume);
                 }
 
-                if channel.deviceorapp {
+                if channel.deviceorapp == DeviceOrApp::Device {
                     manage_device(channel.device, files::get_settings().output, channel.lowlatency, channel.name);
                 } else {
                     manage_app(channel.device, files::get_settings().output, channel.lowlatency, channel.name);

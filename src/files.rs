@@ -4,6 +4,7 @@ use std::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use strum_macros::EnumString;
 use uuid::Uuid;
 use windows::{
     core::{PCWSTR, Interface},
@@ -22,13 +23,19 @@ pub(crate) struct SoundboardSFX {
     pub(crate) keys: Vec<String>
 }
 
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone, EnumString)]
+pub(crate) enum DeviceOrApp {
+    Device,
+    App
+}
+
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone, Default)]
 pub(crate) struct Channel {
     pub(crate) name: String,
     pub(crate) icon: String,
     pub(crate) color: [u8; 3],
     pub(crate) device: String,
-    pub(crate) deviceorapp: bool,
+    pub(crate) deviceorapp: DeviceOrApp,
     pub(crate) lowlatency: bool,
     pub(crate) volume: f32
 }
@@ -59,6 +66,12 @@ impl Default for File {
 impl Default for Settings {
     fn default() -> Self {
         Settings { output: "".to_string(), scale: 1.0, light: false, monitor: true, peaks: true, startup: false }
+    }
+}
+
+impl Default for DeviceOrApp {
+    fn default() -> Self {
+        DeviceOrApp::Device
     }
 }
 
@@ -278,7 +291,10 @@ pub(crate) fn fix_channel(broken: Value) -> Channel {
     }
 
     if let Some(deviceorapp) = broken.get("deviceorapp").and_then(|v| v.as_bool()) {
-        channel.deviceorapp = deviceorapp;
+        channel.deviceorapp = match deviceorapp {
+            true => DeviceOrApp::Device,
+            false => DeviceOrApp::App
+        };
     }
 
     if let Some(lowlatency) = broken.get("lowlatency").and_then(|v| v.as_bool()) {

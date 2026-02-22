@@ -1,6 +1,5 @@
 ﻿using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Input;
 using Avalonia.Media;
 
 namespace Vice.Ui.Controls;
@@ -9,9 +8,6 @@ public partial class SidebarItem : UserControl
 {
     public static readonly StyledProperty<string> TextProperty =
         AvaloniaProperty.Register<SidebarItem, string>(nameof(Text));
-
-    //public static readonly StyledProperty<Control?> IconProperty =
-    //    AvaloniaProperty.Register<SidebarItem, Control?>(nameof(Icon));
     
     public static readonly StyledProperty<Geometry> IconProperty =
         AvaloniaProperty.Register<SidebarItem, Geometry>(nameof(Icon));
@@ -57,7 +53,6 @@ public partial class SidebarItem : UserControl
         set => SetValue(TextProperty, value);
     }
 
-    //public Control? Icon
     public Geometry Icon
     {
         get => GetValue(IconProperty);

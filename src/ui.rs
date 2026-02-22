@@ -13,7 +13,7 @@ use windows::Win32::{
 use device_query::{DeviceQuery as _, DeviceState};
 use serde_json::{json};
 
-use crate::{files, funcs};
+use crate::{files::{self, DeviceOrApp}, funcs};
 
 const EMBEDDED_UI: &[u8] = include_bytes!("../Ui/bin/Release/net10.0/win-x64/publish/Vice.Ui.exe");
 
@@ -33,14 +33,15 @@ fn handle_request(cmd: &str, args: serde_json::Value) -> serde_json::Value {
             if let Some(icon) = args.get("icon").and_then(|v| v.as_str()) {
                 if let Some(name) = args.get("name").and_then(|v| v.as_str()) {
                     if let Some(deviceapps) = args.get("deviceapps").and_then(|v| v.as_str()) {
-                        if let Some(device) = args.get("device").and_then(|v| v.as_bool()) {
+                        if let Some(device_str) = args.get("device").and_then(|v| v.as_str()) {
+                            let deviceorapp: DeviceOrApp = device_str.parse().unwrap();
                             if let Some(low) = args.get("low").and_then(|v| v.as_bool()) {
                                 let res = funcs::new_channel(
                                     color,
                                     icon.to_string(),
                                     name.to_string(),
                                     deviceapps.to_string(),
-                                    device,
+                                    deviceorapp,
                                     low,
                                 );
                                 return json!({"result": res});
@@ -89,7 +90,8 @@ fn handle_request(cmd: &str, args: serde_json::Value) -> serde_json::Value {
             if let Some(icon) = args.get("icon").and_then(|v| v.as_str()) {
                 if let Some(name) = args.get("name").and_then(|v| v.as_str()) {
                     if let Some(deviceapps) = args.get("deviceapps").and_then(|v| v.as_str()) {
-                        if let Some(device) = args.get("device").and_then(|v| v.as_bool()) {
+                        if let Some(device_str) = args.get("device").and_then(|v| v.as_str()) {
+                            let deviceorapp: DeviceOrApp = device_str.parse().unwrap();
                             if let Some(oldname) = args.get("oldname").and_then(|v| v.as_str()) {
                                 if let Some(low) = args.get("low").and_then(|v| v.as_bool()) {
                                     let res = funcs::edit_channel(
@@ -97,7 +99,7 @@ fn handle_request(cmd: &str, args: serde_json::Value) -> serde_json::Value {
                                         icon.to_string(),
                                         name.to_string(),
                                         deviceapps.to_string(),
-                                        device,
+                                        deviceorapp,
                                         oldname.to_string(),
                                         low,
                                     );
@@ -225,10 +227,6 @@ fn handle_request(cmd: &str, args: serde_json::Value) -> serde_json::Value {
             let res = funcs::load_blocks(item.to_string());
             return json!({"result": res});
         }
-    } else if cmd == "flutter_print" {
-        if let Some(text) = args.get("text").and_then(|v| v.as_str()) {
-            println!("{}", text);
-        }
     } else if cmd == "get_version" {
         let version = env!("CARGO_PKG_VERSION");
         return json!({ "result": version });
@@ -272,7 +270,7 @@ fn handle_request(cmd: &str, args: serde_json::Value) -> serde_json::Value {
         run_ui();
     }
 
-    serde_json::Value::Null
+    json!({"result": "null"})
 }
 
 pub(crate) fn call_instance() {
@@ -366,7 +364,7 @@ fn handle_client(mut stream: LocalSocketStream) -> std::io::Result<()> {
 
                 if let Some(respond) = value.get("respond").and_then(|v| v.as_bool()) {
                     if respond == true {
-                        let formatted = format!("{}\n", response);
+                        let formatted = format!("{}\n", response["result"]);
                         stream.write_all(formatted.as_bytes())?;
                         stream.flush()?;
                     }

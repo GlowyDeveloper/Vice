@@ -2,7 +2,6 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:Vice.Ui"
         xmlns:sideitem="clr-namespace:Vice.Ui.Controls"
-        xmlns:fluent="clr-namespace:Avalonia.Controls.FluentIcons;assembly=Avalonia.Controls.FluentIcons"
         x:Class="Vice.Ui.MainWindow"
         x:DataType="local:MainWindow"
         Title="Vice"
@@ -60,8 +59,17 @@
                         </ExperimentalAcrylicBorder.Material>
                     </ExperimentalAcrylicBorder>
                 </Grid>
+                
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="50"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
 
-                <ContentControl x:Name="PageHost"/>
+                    <Grid Background="Transparent" Grid.Column="0"></Grid>
+
+                    <ContentControl Grid.Column="1" x:Name="PageHost"/>
+                </Grid>
             
                 <SplitView IsPaneOpen="{Binding IsPaneOpen}"
                     OpenPaneLength="300"
@@ -101,7 +109,7 @@
                         </Grid>
                     </SplitView.Pane>
                     <SplitView.Content>
-                        <Grid Background="Transparent"></Grid>
+                        <Grid Background="Transparent" IsHitTestVisible="False"></Grid>
                     </SplitView.Content>
                 </SplitView>
             </Grid>

@@ -1,0 +1,249 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Vice.Ui.Pages.ChannelsPage"
+             xmlns:local="clr-namespace:Vice.Ui.Pages"
+             xmlns:converters="clr-namespace:Vice.Ui.Converters"
+             xmlns:controls="clr-namespace:Vice.Ui.Controls"
+             x:DataType="local:ChannelsPage"
+             xmlns:cp="clr-namespace:Avalonia.Controls;assembly=Avalonia.Controls.ColorPicker">
+    
+    <UserControl.Resources>
+        <converters:InverseBoolConverter x:Key="InverseBoolConverter"/>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="50"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        
+        <Button Grid.Row="0" CornerRadius="6" Margin="5,0,0,0" Click="NewItem">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <PathIcon Data="{StaticResource add_regular}" />
+                <TextBlock Text="New"/>
+            </StackPanel>
+        </Button>
+        
+        <Grid Grid.Row="1">
+            <Grid IsVisible="{Binding Editing, Converter={StaticResource InverseBoolConverter}}">
+                <ProgressBar Width="200"
+                         Height="50"
+                         HorizontalAlignment="Center"
+                         VerticalAlignment="Center"
+                         IsVisible="{Binding IsLoaded, Converter={StaticResource InverseBoolConverter}}"
+                         IsIndeterminate="True"
+                         Foreground="White"/>
+            
+                <ItemsControl ItemsSource="{Binding Items}"
+                              IsVisible="{Binding IsLoaded}"
+                              Margin="5">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <VirtualizingStackPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="local:ChannelItemTemplate">
+                            <Border Background="{Binding Brush}"
+                                    Width="200"
+                                    VerticalAlignment="Stretch"
+                                    CornerRadius="8"
+                                    Tag="{Binding name}">
+                                <Grid>
+                                    <Viewbox Stretch="Uniform"
+                                             HorizontalAlignment="Center"
+                                             VerticalAlignment="Bottom"
+                                             Margin="0 0 0 8"
+                                             Height="48">
+                                        <TextBlock Text="{Binding name}"/>
+                                    </Viewbox>
+                                    
+                                    <PathIcon Data="{Binding Icon}"
+                                              Foreground="White"
+                                              Width="32"
+                                              Height="32"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Top"
+                                              Margin="0 16 0 0"/>
+                                    
+                                    <Button HorizontalAlignment="Right"
+                                            VerticalAlignment="Top"
+                                            Margin="0 16 8 0"
+                                            Background="Transparent"
+                                            Click="MoreButton">
+                                        <Button.ContextMenu>
+                                            <ContextMenu>
+                                                <MenuItem Header="Delete" Click="DeleteItem"/>
+                                                <MenuItem Header="Edit" Click="EditItem"/>
+                                            </ContextMenu>
+                                        </Button.ContextMenu>
+                                        
+                                        <PathIcon Data="{StaticResource more_vertical_regular}"
+                                                  Foreground="White"
+                                                  Width="24"
+                                                  Height="24"/>
+                                    </Button>
+                                    
+                                    <Border VerticalAlignment="Stretch"
+                                            Width="16"
+                                            Background="Gray"
+                                            CornerRadius="32"
+                                            Margin="0 64 0 64">
+
+                                        <Border Background="Green"
+                                                Width="16"
+                                                VerticalAlignment="Bottom"
+                                                Height="64"
+                                                CornerRadius="32"/>
+                                    </Border>
+                                        
+                                    <Slider Orientation="Vertical"
+                                            Minimum="0"
+                                            Maximum="2"
+                                            Value="{Binding volume, Mode=TwoWay}"
+                                            ValueChanged="SliderChanged"
+                                            VerticalAlignment="Stretch"
+                                            HorizontalAlignment="Center"
+                                            Width="32"
+                                            Margin="0 63 0 63">
+                                        <Slider.Styles>
+                                            <Style Selector="Slider Track">
+                                                <Setter Property="Width" Value="0"/>
+                                            </Style>
+                                        </Slider.Styles>
+                                    </Slider>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Grid>
+            
+            <DockPanel Margin="20" IsVisible="{Binding Editing}">
+                <Grid DockPanel.Dock="Bottom" VerticalAlignment="Bottom" HorizontalAlignment="Left">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <Button Grid.Column="0" CornerRadius="6" Margin="0,0,16,0" Click="SaveButtonClick">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <PathIcon Data="{StaticResource save_regular}" />
+                            <TextBlock Text="Save"/>
+                        </StackPanel>
+                    </Button>
+                    
+                    <Button Grid.Column="1" CornerRadius="6" Margin="0,0,16,0" Click="BackButtonClick">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <PathIcon Data="{StaticResource arrow_left_regular}" />
+                            <TextBlock Text="Back"/>
+                        </StackPanel>
+                    </Button>
+                </Grid>
+                
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <Button Grid.Column="0"
+                                Width="96"
+                                Height="96"
+                                Background="Transparent"
+                                CornerRadius="96"
+                                Margin="0 0 16 0">
+                            <Button.Flyout>
+                                <Flyout Placement="Bottom">
+                                    <cp:ColorView Width="360"
+                                                  Height="330"
+                                                  Color="{Binding EditedItemTemplate.Color, Mode=TwoWay}"
+                                                  IsAlphaEnabled="False"
+                                                  Opacity="1"
+                                                  IsComponentSliderVisible="False"
+                                                  IsColorPaletteVisible="False"
+                                                  IsHexInputVisible="False"
+                                                  VerticalAlignment="Center"
+                                                  HorizontalAlignment="Left"/>
+                                </Flyout>
+                            </Button.Flyout>
+                            
+                            <PathIcon Data="{StaticResource color_regular}" Foreground="{Binding EditedItemTemplate.Brush}" Width="84" Height="84"></PathIcon>
+                        </Button>
+                        
+                        <TextBox Grid.Column="1" Text="{Binding EditedItemTemplate.name, Mode=TwoWay}"
+                                 Height="40"
+                                 Background="#0D0D0D"
+                                 Foreground="White"
+                                 BorderBrush="White"
+                                 BorderThickness="1"
+                                 HorizontalAlignment="Stretch"/>
+                    </Grid>
+    
+                    <Border Height="20"/>
+                    
+                    <Grid VerticalAlignment="Center">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <Button Grid.Column="0" Width="96" Height="96" Background="Transparent" CornerRadius="96">
+                            <Button.Flyout>
+                                <MenuFlyout>
+                                    <controls:IconSelection Clicked="IconSelected"/>
+                                </MenuFlyout>
+                            </Button.Flyout>
+                            
+                            <PathIcon Data="{Binding EditedItemTemplate.Icon}" Foreground="White" Width="84" Height="84"></PathIcon>
+                        </Button>
+                        
+                        <Button Grid.Column="1"
+                                Content="{Binding EditedItemTemplate.device}"
+                                Height="40"
+                                HorizontalAlignment="Stretch"
+                                Margin="16 0 16 0"
+                                Background="Transparent">
+                            <Button.Flyout>
+                                <MenuFlyout ItemsSource="{Binding DeviceAndAppList}">
+                                    <MenuFlyout.ItemTemplate>
+                                        <DataTemplate>
+                                            <MenuItem Click="DeviceAppSelection" HorizontalAlignment="Stretch">
+                                                <MenuItem.Header>
+                                                    <TextBlock Text="{Binding}" TextWrapping="Wrap" MaxWidth="200"/>
+                                                </MenuItem.Header>
+                                            </MenuItem>
+                                        </DataTemplate>
+                                    </MenuFlyout.ItemTemplate>
+                                </MenuFlyout>
+                            </Button.Flyout>
+                        </Button>
+                        
+                        <Button Grid.Column="2"
+                                Content="{Binding EditedItemTemplate.DeviceOrAppParsed}"
+                                Height="40"
+                                HorizontalAlignment="Stretch"
+                                Background="Transparent">
+                            <Button.Flyout>
+                                <MenuFlyout>
+                                    <MenuItem Header="Capture Device" Click="CaptureDeviceItem"/>
+                                    <MenuItem Header="Capture App" Click="CaptureAppItem"/>
+                                </MenuFlyout>
+                            </Button.Flyout>
+                        </Button>
+                    </Grid>
+                    
+                    <Border Height="20"/>
+                    
+                    <Grid VerticalAlignment="Center">
+                        <TextBlock Text="Low latency mode" FontSize="18" Foreground="White" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                        <ToggleSwitch IsChecked="{Binding EditedItemTemplate.lowlatency}" Margin="0,0,20,0" HorizontalAlignment="Right"/>
+                    </Grid>
+                </StackPanel>
+            </DockPanel>
+        </Grid>
+    </Grid>
+</UserControl>

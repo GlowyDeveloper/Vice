@@ -7,5 +7,6 @@
     <Application.Styles>
         <FluentTheme />
         <StyleInclude Source="avares://Vice.Ui/Assets/Icons.axaml"></StyleInclude>
+        <StyleInclude Source="avares://Avalonia.Controls.ColorPicker/Themes/Fluent/Fluent.xaml"/>
     </Application.Styles>
 </Application>

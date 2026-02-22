@@ -4,11 +4,11 @@ using Avalonia.Input;
 using Avalonia.Threading;
 using Avalonia.Interactivity;
 
-namespace Vice.Ui.Pages.Channels;
+namespace Vice.Ui.Pages;
 
-public partial class ChannelsPage : UserControl
+public partial class SfxsPage : UserControl
 {
-    public ChannelsPage()
+    public SfxsPage()
     {
         InitializeComponent();
     }

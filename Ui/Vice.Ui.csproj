@@ -20,6 +20,8 @@
         <AvaloniaResource Include="Assets\**\*.png" />
         
         <PackageReference Include="Avalonia" Version="11.3.11"/>
+        
+        <PackageReference Include="Avalonia.Controls.ColorPicker" Version="11.3.11" />
         <PackageReference Include="Avalonia.Desktop" Version="11.3.11"/>
         <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.11"/>
         <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.11"/>
@@ -29,5 +31,28 @@
             <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
         </PackageReference>
         <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Update="Pages\Channels.axaml.cs">
+        <DependentUpon>Page.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
+      <Compile Update="Pages\Effects.axaml.cs">
+        <DependentUpon>Effects.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
+      <Compile Update="Pages\Performance.axaml.cs">
+        <DependentUpon>Performance.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
+      <Compile Update="Pages\Settings.axaml.cs">
+        <DependentUpon>Settings.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
+      <Compile Update="Pages\Sfxs.axaml.cs">
+        <DependentUpon>Sfxs.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
     </ItemGroup>
 </Project>

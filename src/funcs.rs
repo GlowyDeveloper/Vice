@@ -3,13 +3,13 @@ use std::{net::TcpStream, time::Duration, fs};
 use rfd::{MessageDialog, MessageDialogResult};
 use serde::Deserialize;
 
-use crate::files::{self, Channel, Settings, SoundboardSFX};
+use crate::files::{self, Channel, DeviceOrApp, Settings, SoundboardSFX};
 use crate::audio::{self};
 use crate::performance;
 
 static SFX_EXTENTIONS: [&str; 6] = ["wav", "mp3", "wma", "aac", "m4a", "flac"];
 
-pub(crate) fn new_channel(color: [u8; 3], icon: String, name: String, deviceapps: String, device: bool, low: bool) -> Result<(), String> {
+pub(crate) fn new_channel(color: [u8; 3], icon: String, name: String, deviceapps: String, device: DeviceOrApp, low: bool) -> Result<(), String> {
     let channel: Channel = Channel{name, icon, color, device: deviceapps, deviceorapp: device, lowlatency: low, volume: 1.0};
     let mut channels: Vec<Channel> = files::get_channels();
 
@@ -42,7 +42,7 @@ pub(crate) fn new_sound(color: [u8; 3], icon: String, name: String, sound: Strin
     return files::save_soundboard(sfxs);
 }
 
-pub(crate) fn edit_channel(color: [u8; 3], icon: String, name: String, deviceapps: String, device: bool, oldname: String, low: bool) -> Result<(), String> {
+pub(crate) fn edit_channel(color: [u8; 3], icon: String, name: String, deviceapps: String, device: DeviceOrApp, oldname: String, low: bool) -> Result<(), String> {
     let mut channels: Vec<Channel> = files::get_channels();
 
     if let Some(pos) = channels.iter().position(|c: &Channel| c.name == oldname) {

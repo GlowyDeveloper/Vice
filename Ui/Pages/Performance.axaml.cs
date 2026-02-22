@@ -4,11 +4,11 @@ using Avalonia.Input;
 using Avalonia.Threading;
 using Avalonia.Interactivity;
 
-namespace Vice.Ui.Pages.Settings;
+namespace Vice.Ui.Pages;
 
-public partial class SettingsPage : UserControl
+public partial class PerformancePage : UserControl
 {
-    public SettingsPage()
+    public PerformancePage()
     {
         InitializeComponent();
     }
