@@ -1,12 +1,16 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Interactivity;
 using Vice.Ui.Controls;
 using Vice.Ui.Pages;
+using Vice.Ui.Utils;
 
 namespace Vice.Ui;
 
 public partial class MainWindow : Window
 {
+    private InvokeRequest _invokeRequest = new InvokeRequest();
+    
     public static readonly StyledProperty<bool> IsPaneOpenProperty =
         AvaloniaProperty.Register<MainWindow, bool>(nameof(IsPaneOpen), false);
     
@@ -15,7 +19,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         DataContext = this;
 
-        PageHost.Content = new ChannelsPage();
+        PageHost.Content = new ChannelsPage(_invokeRequest);
         ChannelsItem.IsSelected = true;
 
         ChannelsItem.PointerPressed += (_, _) => Navigate(ChannelsItem);
@@ -23,11 +27,9 @@ public partial class MainWindow : Window
         EffectsItem.PointerPressed += (_, _) => Navigate(EffectsItem);
         PerformanceItem.PointerPressed += (_, _) => Navigate(PerformanceItem);
         SettingsItem.PointerPressed += (_, _) => Navigate(SettingsItem);
-
-        SidebarOpen.Click += (_, _) => TriggerPaneCommand();
     }
     
-    private void TriggerPaneCommand()
+    private void TriggerPaneCommand(object? sender, RoutedEventArgs e)
     {
         IsPaneOpen = !IsPaneOpen;
     }
@@ -45,19 +47,16 @@ public partial class MainWindow : Window
         switch (item.Name)
         {
             case "ChannelsItem":
-                PageHost.Content = new ChannelsPage();
-                
+                PageHost.Content = new ChannelsPage(_invokeRequest);
                 break;
             case "SfxsItem":
-                PageHost.Content = new SfxsPage();
-                
+                PageHost.Content = new SfxsPage(_invokeRequest);
                 break;
             case "EffectsItem":
                 PageHost.Content = new EffectsPage();
                 break;
             case "PerformanceItem":
                 PageHost.Content = new PerformancePage();
-
                 break;
             case "SettingsItem":
                 PageHost.Content = new SettingsPage();

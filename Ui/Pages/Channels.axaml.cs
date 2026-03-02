@@ -3,9 +3,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -18,14 +15,16 @@ namespace Vice.Ui.Pages;
 
 public partial class ChannelsPage : UserControl
 {
-    private InvokeRequest _invokeRequest = new InvokeRequest();
+    private InvokeRequest _invokeRequest;
     
     public static readonly StyledProperty<bool> IsLoadedProperty =
-        AvaloniaProperty.Register<ChannelsPage, bool>(nameof(IsLoaded), true);
+        AvaloniaProperty.Register<ChannelsPage, bool>(nameof(IsLoaded), false);
     public static readonly StyledProperty<bool> EditingProperty =
         AvaloniaProperty.Register<ChannelsPage, bool>(nameof(Editing), false);
     public static readonly StyledProperty<ChannelItemTemplate?> EditedItemTemplateProperty =
         AvaloniaProperty.Register<ChannelsPage, ChannelItemTemplate?>(nameof(EditedItemTemplate));
+    public static readonly StyledProperty<int> ItemsWidthProperty =
+        AvaloniaProperty.Register<ChannelsPage, int>(nameof(ItemsWidth), 100);
 
     public ObservableCollection<ChannelItemTemplate> Items { get; set; } = new();
 
@@ -49,25 +48,58 @@ public partial class ChannelsPage : UserControl
         set => SetValue(EditedItemTemplateProperty, value);
     }
     
-    public ChannelsPage()
+    public int ItemsWidth
+    {
+        get => GetValue(ItemsWidthProperty);
+        set => SetValue(ItemsWidthProperty, value);
+    }
+    
+    public ChannelsPage(InvokeRequest request)
     {
         InitializeComponent();
         DataContext = this;
+
+        _invokeRequest = request;
         
         Refresh();
         
         //TODO: Volume bars
     }
+    
+    protected override void OnSizeChanged(SizeChangedEventArgs e)
+    {
+        base.OnSizeChanged(e);
+
+        var width = e.NewSize.Width;
+        ItemsWidth = Math.Max(1, (int)(width / 10));
+        if (width < 150)
+        {
+            ItemsWidth = Math.Max(1, (int)width);
+        }
+        else if (width < 500)
+        {
+            ItemsWidth = Math.Max(1, (int)(width / 2));
+        }
+        else if (width < 750)
+        {
+            ItemsWidth = Math.Max(1, (int)(width / 5));
+        } 
+        else if (width < 1000)
+        {
+            ItemsWidth = Math.Max(1, (int)(width / 7));
+        }
+    }
 
     public async void Refresh()
     {
         Items.Clear();
+        IsLoaded = false;
 
         try
         {
             var result = await _invokeRequest.SendRequestAsync("get_channels");
             var parsed = JsonConvert.DeserializeObject<List<ChannelsClass>>(result);
-            
+
             foreach (var item in parsed)
             {
                 var itemTemplate = new ChannelItemTemplate(
@@ -87,6 +119,10 @@ public partial class ChannelsPage : UserControl
         {
             Console.WriteLine($"Channel parsing error: {ex}");
             throw;
+        }
+        finally
+        {
+            IsLoaded = true;
         }
     }
 

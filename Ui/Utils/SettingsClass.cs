@@ -29,20 +29,22 @@ public class ChannelsClass {
     }
 }
 
-class SFXClass {
-    public string name;
-    public string icon;
-    public List<byte> color;
-    public bool lowlatency;
-    public List<string> keys;
+public class SFXClass {
+    public string name { get; set; }
+    public string icon { get; set; }
+    public List<byte> color { get; set; }
+    public bool lowlatency { get; set; }
+    public List<string> keys { get; set; }
+    public string sound { get; set; }
     
-    public SFXClass(string Nname, string Nicon, List<byte> Ncolor, bool Nlowlatency, List<string> Nkeys)
+    public SFXClass(string Nname, string Nicon, List<byte> Ncolor, bool Nlowlatency, List<string> Nkeys, string Nsound)
     {
         name = Nname;
         icon = Nicon;
         color = Ncolor;
         lowlatency = Nlowlatency;
         keys = Nkeys;
+        sound = Nsound;
     }
 }
 

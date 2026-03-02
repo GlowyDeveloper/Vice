@@ -1,0 +1,9 @@
+﻿<Border xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Vice.Ui.Controls"
+             x:Class="Vice.Ui.Controls.KeybindListener"
+             Focusable="True">
+    <TextBlock Text="{Binding Text, RelativeSource={RelativeSource AncestorType=local:KeybindListener}}"
+               HorizontalAlignment="Center"
+               VerticalAlignment="Center"></TextBlock>
+</Border>

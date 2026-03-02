@@ -17,7 +17,7 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         
-        <Button Grid.Row="0" CornerRadius="6" Margin="5,0,0,0" Click="NewItem">
+        <Button Grid.Row="0" CornerRadius="6" Margin="5,0,0,0" Click="NewItem" Background="#4d4d4d">
             <StackPanel Orientation="Horizontal" Spacing="6">
                 <PathIcon Data="{StaticResource add_regular}" />
                 <TextBlock Text="New"/>
@@ -34,90 +34,93 @@
                          IsIndeterminate="True"
                          Foreground="White"/>
             
-                <ItemsControl ItemsSource="{Binding Items}"
-                              IsVisible="{Binding IsLoaded}"
-                              Margin="5">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <VirtualizingStackPanel Orientation="Horizontal"/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="local:ChannelItemTemplate">
-                            <Border Background="{Binding Brush}"
-                                    Width="200"
-                                    VerticalAlignment="Stretch"
-                                    CornerRadius="8"
-                                    Tag="{Binding name}">
-                                <Grid>
-                                    <Viewbox Stretch="Uniform"
-                                             HorizontalAlignment="Center"
-                                             VerticalAlignment="Bottom"
-                                             Margin="0 0 0 8"
-                                             Height="48">
-                                        <TextBlock Text="{Binding name}"/>
-                                    </Viewbox>
-                                    
-                                    <PathIcon Data="{Binding Icon}"
-                                              Foreground="White"
-                                              Width="32"
-                                              Height="32"
-                                              HorizontalAlignment="Center"
-                                              VerticalAlignment="Top"
-                                              Margin="0 16 0 0"/>
-                                    
-                                    <Button HorizontalAlignment="Right"
-                                            VerticalAlignment="Top"
-                                            Margin="0 16 8 0"
-                                            Background="Transparent"
-                                            Click="MoreButton">
-                                        <Button.ContextMenu>
-                                            <ContextMenu>
-                                                <MenuItem Header="Delete" Click="DeleteItem"/>
-                                                <MenuItem Header="Edit" Click="EditItem"/>
-                                            </ContextMenu>
-                                        </Button.ContextMenu>
+                <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding Items}"
+                                  IsVisible="{Binding IsLoaded}"
+                                  Margin="5">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+    
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="local:ChannelItemTemplate">
+                                <Border Background="{Binding Brush}"
+                                        VerticalAlignment="Stretch"
+                                        Width="{Binding ItemsWidth, RelativeSource={RelativeSource AncestorType=local:ChannelsPage}}"
+                                        CornerRadius="8"
+                                        Tag="{Binding name}">
+                                    <Grid>
+                                        <Viewbox Stretch="Uniform"
+                                                 HorizontalAlignment="Center"
+                                                 VerticalAlignment="Bottom"
+                                                 Margin="0 0 0 8"
+                                                 Height="48">
+                                            <TextBlock Text="{Binding name}"/>
+                                        </Viewbox>
                                         
-                                        <PathIcon Data="{StaticResource more_vertical_regular}"
+                                        <PathIcon Data="{Binding Icon}"
                                                   Foreground="White"
-                                                  Width="24"
-                                                  Height="24"/>
-                                    </Button>
-                                    
-                                    <Border VerticalAlignment="Stretch"
-                                            Width="16"
-                                            Background="Gray"
-                                            CornerRadius="32"
-                                            Margin="0 64 0 64">
-
-                                        <Border Background="Green"
-                                                Width="16"
-                                                VerticalAlignment="Bottom"
-                                                Height="64"
-                                                CornerRadius="32"/>
-                                    </Border>
+                                                  Width="32"
+                                                  Height="32"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Top"
+                                                  Margin="0 16 0 0"/>
                                         
-                                    <Slider Orientation="Vertical"
-                                            Minimum="0"
-                                            Maximum="2"
-                                            Value="{Binding volume, Mode=TwoWay}"
-                                            ValueChanged="SliderChanged"
-                                            VerticalAlignment="Stretch"
-                                            HorizontalAlignment="Center"
-                                            Width="32"
-                                            Margin="0 63 0 63">
-                                        <Slider.Styles>
-                                            <Style Selector="Slider Track">
-                                                <Setter Property="Width" Value="0"/>
-                                            </Style>
-                                        </Slider.Styles>
-                                    </Slider>
-                                </Grid>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                                        <Button HorizontalAlignment="Right"
+                                                VerticalAlignment="Top"
+                                                Margin="0 16 8 0"
+                                                Background="Transparent"
+                                                Click="MoreButton">
+                                            <Button.ContextMenu>
+                                                <ContextMenu>
+                                                    <MenuItem Header="Delete" Click="DeleteItem"/>
+                                                    <MenuItem Header="Edit" Click="EditItem"/>
+                                                </ContextMenu>
+                                            </Button.ContextMenu>
+                                            
+                                            <PathIcon Data="{StaticResource more_vertical_regular}"
+                                                      Foreground="White"
+                                                      Width="24"
+                                                      Height="24"/>
+                                        </Button>
+                                        
+                                        <Border VerticalAlignment="Stretch"
+                                                Width="16"
+                                                Background="Gray"
+                                                CornerRadius="32"
+                                                Margin="0 64 0 64">
+    
+                                            <Border Background="Green"
+                                                    Width="16"
+                                                    VerticalAlignment="Bottom"
+                                                    Height="64"
+                                                    CornerRadius="32"/>
+                                        </Border>
+                                            
+                                        <Slider Orientation="Vertical"
+                                                Minimum="0"
+                                                Maximum="2"
+                                                Value="{Binding volume, Mode=TwoWay}"
+                                                ValueChanged="SliderChanged"
+                                                VerticalAlignment="Stretch"
+                                                HorizontalAlignment="Center"
+                                                Width="32"
+                                                Margin="0 63 0 63">
+                                            <Slider.Styles>
+                                                <Style Selector="Slider Track">
+                                                    <Setter Property="Width" Value="0"/>
+                                                </Style>
+                                            </Slider.Styles>
+                                        </Slider>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
             </Grid>
             
             <DockPanel Margin="20" IsVisible="{Binding Editing}">
@@ -127,14 +130,14 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     
-                    <Button Grid.Column="0" CornerRadius="6" Margin="0,0,16,0" Click="SaveButtonClick">
+                    <Button Grid.Column="0" CornerRadius="6" Margin="0,0,16,0" Click="SaveButtonClick" Background="#4d4d4d">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <PathIcon Data="{StaticResource save_regular}" />
                             <TextBlock Text="Save"/>
                         </StackPanel>
                     </Button>
                     
-                    <Button Grid.Column="1" CornerRadius="6" Margin="0,0,16,0" Click="BackButtonClick">
+                    <Button Grid.Column="1" CornerRadius="6" Margin="0,0,16,0" Click="BackButtonClick" Background="#4d4d4d">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <PathIcon Data="{StaticResource arrow_left_regular}" />
                             <TextBlock Text="Back"/>
@@ -173,13 +176,24 @@
                             <PathIcon Data="{StaticResource color_regular}" Foreground="{Binding EditedItemTemplate.Brush}" Width="84" Height="84"></PathIcon>
                         </Button>
                         
-                        <TextBox Grid.Column="1" Text="{Binding EditedItemTemplate.name, Mode=TwoWay}"
-                                 Height="40"
-                                 Background="#0D0D0D"
-                                 Foreground="White"
-                                 BorderBrush="White"
-                                 BorderThickness="1"
-                                 HorizontalAlignment="Stretch"/>
+                        <Grid Grid.Column="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <TextBlock Grid.Column="0" Text="Name" FontSize="18" Foreground="White" Margin="32 0 48 0" VerticalAlignment="Center"/>
+                            
+                            <TextBox Grid.Column="1" x:Name="NameTextBox"
+                                     Text="{Binding EditedItemTemplate.name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     Height="40"
+                                     Background="#4d4d4d"
+                                     Foreground="White"
+                                     BorderBrush="White"
+                                     BorderThickness="1"
+                                     HorizontalAlignment="Stretch"
+                                     CornerRadius="8"/>
+                        </Grid>
                     </Grid>
     
                     <Border Height="20"/>

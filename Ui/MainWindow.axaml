@@ -16,28 +16,27 @@
     <Panel>
         <ExperimentalAcrylicBorder IsHitTestVisible="False">
             <ExperimentalAcrylicBorder.Material>
-                <ExperimentalAcrylicMaterial
-                    BackgroundSource="Digger"
-                    TintColor="Black"
-                    TintOpacity="0.8"
-                    MaterialOpacity="0.65"/>
+                <ExperimentalAcrylicMaterial BackgroundSource="Digger"
+                                             TintColor="Black"
+                                             TintOpacity="0.8"
+                                             MaterialOpacity="0.65"/>
             </ExperimentalAcrylicBorder.Material>
         </ExperimentalAcrylicBorder>
 
         <Grid ColumnDefinitions="Auto,*" RowDefinitions="36,*">
             <Panel Grid.ColumnSpan="1" Margin="8">
                 <Image Source="/Assets/icon.ico"
-                    Width="18"
-                    Height="18"
-                    Margin="4,4,0,0"
-                    VerticalAlignment="Top"
-                    HorizontalAlignment="Left"/>
+                       Width="18"
+                       Height="18"
+                       Margin="4,4,0,0"
+                       VerticalAlignment="Top"
+                       HorizontalAlignment="Left"/>
                 <TextBlock Text="Vice"
-                    FontSize="16"
-                    Foreground="White"
-                    Margin="32,4,0,0"
-                    VerticalAlignment="Top"
-                    HorizontalAlignment="Left"/>
+                           FontSize="16"
+                           Foreground="White"
+                           Margin="32,4,0,0"
+                           VerticalAlignment="Top"
+                           HorizontalAlignment="Left"/>
             </Panel>
 
             <Grid Grid.Row="1" Grid.ColumnSpan="2">
@@ -49,13 +48,15 @@
 
                     <Grid Background="Transparent" Grid.Column="0"></Grid>
 
-                    <ExperimentalAcrylicBorder IsHitTestVisible="False" CornerRadius="12,0,0,0" ClipToBounds="True" Grid.Column="1">
+                    <ExperimentalAcrylicBorder IsHitTestVisible="False"
+                                               CornerRadius="12,0,0,0"
+                                               ClipToBounds="True"
+                                               Grid.Column="1">
                         <ExperimentalAcrylicBorder.Material>
-                            <ExperimentalAcrylicMaterial
-                                BackgroundSource="Digger"
-                                TintColor="Black"
-                                TintOpacity="1"
-                                MaterialOpacity="0.65"/>
+                            <ExperimentalAcrylicMaterial BackgroundSource="Digger"
+                                                         TintColor="Black"
+                                                         TintOpacity="0.8"
+                                                         MaterialOpacity="0.65"/>
                         </ExperimentalAcrylicBorder.Material>
                     </ExperimentalAcrylicBorder>
                 </Grid>
@@ -72,31 +73,29 @@
                 </Grid>
             
                 <SplitView IsPaneOpen="{Binding IsPaneOpen}"
-                    OpenPaneLength="300"
-                    CompactPaneLength="50"
-                    DisplayMode="CompactInline"
-                    PaneBackground="Transparent">
+                           OpenPaneLength="300"
+                           CompactPaneLength="50"
+                           DisplayMode="CompactInline"
+                           PaneBackground="Transparent">
                     <SplitView.Pane>
                         <Grid>
                             <ExperimentalAcrylicBorder IsHitTestVisible="False">
                                 <ExperimentalAcrylicBorder.Material>
-                                    <ExperimentalAcrylicMaterial
-                                        BackgroundSource="Digger"
-                                        TintColor="Black"
-                                        TintOpacity="0.8"
-                                        MaterialOpacity="0.65"/>
+                                    <ExperimentalAcrylicMaterial BackgroundSource="Digger"
+                                                                 TintColor="Black"
+                                                                 TintOpacity="0.8"
+                                                                 MaterialOpacity="0.65"/>
                                 </ExperimentalAcrylicBorder.Material>
                             </ExperimentalAcrylicBorder>
         
                             <DockPanel Margin="5">
-                                <sideitem:SidebarItem
-                                    DockPanel.Dock="Bottom"
-                                    x:Name="SettingsItem"
-                                    Text=" Settings"
-                                    Icon="{StaticResource settings_regular}"/>
+                                <sideitem:SidebarItem DockPanel.Dock="Bottom"
+                                                      x:Name="SettingsItem"
+                                                      Text=" Settings"
+                                                      Icon="{StaticResource settings_regular}"/>
                             
                                 <StackPanel Spacing="5">
-                                    <Button x:Name="SidebarOpen" Background="Transparent">
+                                    <Button x:Name="SidebarOpen" Background="Transparent" Click="TriggerPaneCommand">
                                         <PathIcon Data="{StaticResource line_horizontal_3_regular}"></PathIcon>
                                     </Button>
             

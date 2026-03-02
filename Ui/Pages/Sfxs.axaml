@@ -1,8 +1,235 @@
 ﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="Vice.Ui.Pages.SfxsPage">
+             x:Class="Vice.Ui.Pages.SfxsPage"
+             xmlns:local="clr-namespace:Vice.Ui.Pages"
+             xmlns:converters="clr-namespace:Vice.Ui.Converters"
+             xmlns:controls="clr-namespace:Vice.Ui.Controls"
+             x:DataType="local:SfxsPage"
+             xmlns:cp="clr-namespace:Avalonia.Controls;assembly=Avalonia.Controls.ColorPicker">
+    
+    <UserControl.Resources>
+        <converters:InverseBoolConverter x:Key="InverseBoolConverter"/>
+    </UserControl.Resources>
 
-    <TextBlock Text="Sfx Page"
-               HorizontalAlignment="Center"
-               VerticalAlignment="Center"/>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="50"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        
+        <Button Grid.Row="0" CornerRadius="6" Margin="5,0,0,0" Click="NewItem">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <PathIcon Data="{StaticResource add_regular}" />
+                <TextBlock Text="New"/>
+            </StackPanel>
+        </Button>
+        
+        <Grid Grid.Row="1">
+            <Grid IsVisible="{Binding Editing, Converter={StaticResource InverseBoolConverter}}">
+                <ProgressBar Width="200"
+                         Height="50"
+                         HorizontalAlignment="Center"
+                         VerticalAlignment="Center"
+                         IsVisible="{Binding IsLoaded, Converter={StaticResource InverseBoolConverter}}"
+                         IsIndeterminate="True"
+                         Foreground="White"/>
+            
+                <ScrollViewer>
+                    <ItemsControl ItemsSource="{Binding Items}"
+                                  IsVisible="{Binding IsLoaded}"
+                                  Margin="5">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Columns="{Binding ColumnCount}" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+    
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="local:SfxItemTemplate">
+                                <Border Background="{Binding Brush}"
+                                        HorizontalAlignment="Stretch"
+                                        CornerRadius="8"
+                                        Tag="{Binding name}"
+                                        Margin="4">
+
+                                    <Border.Height>
+                                        <Binding Path="Bounds.Width"
+                                                 RelativeSource="{RelativeSource Self}" />
+                                    </Border.Height>
+                                    
+                                    <Grid>
+                                        <Viewbox Stretch="Uniform"
+                                                 HorizontalAlignment="Center"
+                                                 VerticalAlignment="Bottom"
+                                                 Margin="0 0 0 8"
+                                                 Height="48">
+                                            <TextBlock Text="{Binding name}"/>
+                                        </Viewbox>
+                                        
+                                        <Viewbox Stretch="Uniform" Margin="60 8 64 40" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <PathIcon Data="{Binding Icon}"
+                                                      Foreground="White"/>
+                                        </Viewbox>
+                                        
+                                        <Button HorizontalAlignment="Right"
+                                                VerticalAlignment="Top"
+                                                Margin="0 16 8 0"
+                                                Background="Transparent"
+                                                Click="MoreButton">
+                                            <Button.ContextMenu>
+                                                <ContextMenu>
+                                                    <MenuItem Header="Delete" Click="DeleteItem"/>
+                                                    <MenuItem Header="Edit" Click="EditItem"/>
+                                                </ContextMenu>
+                                            </Button.ContextMenu>
+                                            
+                                            <PathIcon Data="{StaticResource more_vertical_regular}"
+                                                      Foreground="White"
+                                                      Width="24"
+                                                      Height="24"/>
+                                        </Button>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+            
+            <DockPanel Margin="20" IsVisible="{Binding Editing}">
+                <Grid DockPanel.Dock="Bottom" VerticalAlignment="Bottom" HorizontalAlignment="Left">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <Button Grid.Column="0" CornerRadius="6" Margin="0,0,16,0" Click="SaveButtonClick" Background="#4d4d4d">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <PathIcon Data="{StaticResource save_regular}" />
+                            <TextBlock Text="Save"/>
+                        </StackPanel>
+                    </Button>
+                    
+                    <Button Grid.Column="1" CornerRadius="6" Margin="0,0,16,0" Click="BackButtonClick" Background="#4d4d4d">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <PathIcon Data="{StaticResource arrow_left_regular}" />
+                            <TextBlock Text="Back"/>
+                        </StackPanel>
+                    </Button>
+                </Grid>
+                
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <Button Grid.Column="0"
+                                Width="96"
+                                Height="96"
+                                Background="Transparent"
+                                CornerRadius="96"
+                                Margin="0 0 16 0">
+                            <Button.Flyout>
+                                <Flyout Placement="Bottom">
+                                    <cp:ColorView Width="360"
+                                                  Height="330"
+                                                  Color="{Binding EditedItemTemplate.Color, Mode=TwoWay}"
+                                                  IsAlphaEnabled="False"
+                                                  Opacity="1"
+                                                  IsComponentSliderVisible="False"
+                                                  IsColorPaletteVisible="False"
+                                                  IsHexInputVisible="False"
+                                                  VerticalAlignment="Center"
+                                                  HorizontalAlignment="Left"/>
+                                </Flyout>
+                            </Button.Flyout>
+                            
+                            <PathIcon Data="{StaticResource color_regular}" Foreground="{Binding EditedItemTemplate.Brush}" Width="84" Height="84"></PathIcon>
+                        </Button>
+                        
+                        <Grid Grid.Column="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <TextBlock Grid.Column="0" Text="Name" FontSize="18" Foreground="White" Margin="32 0 48 0" VerticalAlignment="Center"/>
+                            
+                            <TextBox Grid.Column="1"
+                                     Text="{Binding EditedItemTemplate.name, Mode=TwoWay}"
+                                     Height="40"
+                                     Background="#4d4d4d"
+                                     Foreground="White"
+                                     BorderBrush="White"
+                                     BorderThickness="1"
+                                     HorizontalAlignment="Stretch"
+                                     CornerRadius="8"/>
+                        </Grid>
+                    </Grid>
+    
+                    <Border Height="20"/>
+                    
+                    <Grid VerticalAlignment="Center">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <Button Grid.Column="0"
+                                Width="96"
+                                Height="96"
+                                Background="Transparent"
+                                CornerRadius="96"
+                                Margin="0 0 16 0">
+                            <Button.Flyout>
+                                <MenuFlyout>
+                                    <controls:IconSelection Clicked="IconSelected"/>
+                                </MenuFlyout>
+                            </Button.Flyout>
+                            
+                            <PathIcon Data="{Binding EditedItemTemplate.Icon}" Foreground="White" Width="84" Height="84"></PathIcon>
+                        </Button>
+                        
+                        <Grid Grid.Column="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <TextBlock Grid.Column="0" Text="Name" FontSize="18" Foreground="White" Margin="32 0 48 0" VerticalAlignment="Center"/>
+                            
+                            <controls:KeybindListener Grid.Column="1"
+                                                      Background="#4d4d4d"
+                                                      BorderBrush="White"
+                                                      BorderThickness="1"
+                                                      HorizontalAlignment="Stretch"
+                                                      Text="{Binding EditedItemTemplate.KeysText}"
+                                                      Height="40"
+                                                      CornerRadius="8"/>
+                        </Grid>
+                    </Grid>
+                    
+                    <Border Height="20"/>
+                    
+                    <Grid VerticalAlignment="Center">
+                        <TextBlock Text="Low latency mode" FontSize="18" Foreground="White" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                        <ToggleSwitch IsChecked="{Binding EditedItemTemplate.lowlatency}" Margin="0,0,20,0" HorizontalAlignment="Right"/>
+                    </Grid>
+                    
+                    <Border Height="20"/>
+                    
+                    <Button Height="40"
+                            Background="#4d4d4d"
+                            CornerRadius="8"
+                            HorizontalAlignment="Stretch"
+                            Content="{Binding EditedItemTemplate.sound}"
+                            BorderBrush="White"
+                            BorderThickness="1"
+                            Click="SoundFile"/>
+                </StackPanel>
+            </DockPanel>
+        </Grid>
+    </Grid>
 </UserControl>

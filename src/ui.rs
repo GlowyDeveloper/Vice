@@ -111,7 +111,7 @@ fn handle_request(cmd: &str, args: serde_json::Value) -> serde_json::Value {
                 }
             }
         }
-    } else if cmd == "edit_soundboard" {
+    } else if cmd == "edit_sound" {
         if let Some(col) = args.get("color").and_then(|v| v.as_array()) {
             let mut color: [u8; 3] = [0, 0, 0];
             for (i, val) in col.iter().enumerate() {
