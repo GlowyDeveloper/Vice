@@ -167,15 +167,18 @@ fn handle_request(cmd: &str, args: serde_json::Value) -> serde_json::Value {
                     if let Some(monitor) = args.get("monitor").and_then(|v| v.as_bool()) {
                         if let Some(peaks) = args.get("peaks").and_then(|v| v.as_bool()) {
                             if let Some(startup) = args.get("startup").and_then(|v| v.as_bool()) {
-                                let res = funcs::save_settings(
-                                    output.to_string(),
-                                    scale as f32,
-                                    light,
-                                    monitor,
-                                    peaks,
-                                    startup
-                                );
-                                return json!({"result": res});
+                                if let Some(tray) = args.get("tray").and_then(|v| v.as_bool()) {
+                                    let res = funcs::save_settings(
+                                        output.to_string(),
+                                        scale as f32,
+                                        light,
+                                        monitor,
+                                        peaks,
+                                        startup,
+                                        tray
+                                    );
+                                    return json!({"result": res});
+                                }
                             }
                         }
                     }
@@ -268,6 +271,11 @@ fn handle_request(cmd: &str, args: serde_json::Value) -> serde_json::Value {
         println!("Reopening UI");
 
         run_ui();
+    } else if cmd == "quit" {
+        let settings = files::get_settings();
+        if settings.tray == false {
+            std::process::exit(0);
+        }
     }
 
     json!({"result": "null"})

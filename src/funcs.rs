@@ -129,7 +129,7 @@ pub(crate) fn get_apps() -> Vec<String> {
     audio::apps()
 }
 
-pub(crate) fn save_settings(output: String, scale: f32, light: bool, monitor: bool, peaks: bool, startup: bool) -> Result<(), String> {
+pub(crate) fn save_settings(output: String, scale: f32, light: bool, monitor: bool, peaks: bool, startup: bool, tray: bool) -> Result<(), String> {
     let mut settings: Settings = files::get_settings();
     settings.output = output;
     settings.scale = scale;
@@ -137,6 +137,7 @@ pub(crate) fn save_settings(output: String, scale: f32, light: bool, monitor: bo
     settings.monitor = monitor;
     settings.peaks = peaks;
     settings.startup = startup;
+    settings.tray = tray;
 
     files::save_settings(settings).map(|_| {audio::restart(); performance::change_bool(monitor); files::manage_startup()})
 }

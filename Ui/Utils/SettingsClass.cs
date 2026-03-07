@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace Vice.Ui.Utils;
 
@@ -50,24 +51,24 @@ public class SFXClass {
 
 public class SettingsClass
 {
-    public string outputDevice;
-    public double scale = 2147483647.0;
-    public string version = "Please wait";
-    public bool lightMode = false;
-    public bool monitor = false;
-    public bool peaks = true;
-    public bool startup = false;
-    public bool stayInTray = true;
+    public string output { get; set; }
+    public double scale { get; set; }
+    public string version { get; set; }
+    public bool light { get; set; }
+    public bool monitor { get; set; }
+    public bool peaks { get; set; }
+    public bool startup { get; set; }
+    public bool tray { get; set; }
 
     public SettingsClass(string NoutputDevice, double Nscale, string Nversion, bool Nstartup, bool NstayInTray, bool Npeaks, bool Nmonitor, bool NlightMode)
     {
-        outputDevice = NoutputDevice;
+        output = NoutputDevice;
         scale = Nscale;
         version = Nversion;
         startup = Nstartup;
-        stayInTray = NstayInTray;
+        tray = NstayInTray;
         peaks = Npeaks;
         monitor = Nmonitor;
-        lightMode = NlightMode;
+        light = NlightMode;
     }
 }

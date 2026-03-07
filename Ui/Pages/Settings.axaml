@@ -1,8 +1,122 @@
 ﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="Vice.Ui.Pages.SettingsPage">
+             x:Class="Vice.Ui.Pages.SettingsPage"
+             xmlns:local="clr-namespace:Vice.Ui.Pages"
+             x:DataType="local:SettingsPage">
 
-    <TextBlock Text="Settings Page"
-               HorizontalAlignment="Center"
-               VerticalAlignment="Center"/>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="50"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        
+        <Button Grid.Row="0" CornerRadius="6" Margin="5,0,0,0" Click="Save" Background="#4d4d4d">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <PathIcon Data="{StaticResource save_regular}" />
+                <TextBlock Text="Save"/>
+            </StackPanel>
+        </Button>
+        
+        <DockPanel Grid.Row="1" Margin="20">
+            <Grid DockPanel.Dock="Bottom" VerticalAlignment="Bottom" HorizontalAlignment="Left">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                
+                <Grid Grid.Row="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <TextBlock Grid.Column="0" Text="Version: " FontSize="12" Foreground="White"/>
+                    <TextBlock Grid.Column="1" Text="{Binding version}" FontSize="12" Foreground="White"/>
+                </Grid>
+                    
+                <Button Grid.Row="1" CornerRadius="6" Margin="0,4,16,0" Click="OpenGithub" Background="Transparent">
+                    <PathIcon Data="{StaticResource github_regular}" />
+                </Button>
+            </Grid>
+            
+            <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <TextBlock Grid.Column="0" Text="Output Device" FontSize="18" Foreground="White"/>
+                    
+                    <Button Grid.Column="1"
+                            Content="{Binding _settings.output}"
+                            HorizontalAlignment="Right"
+                            FontSize="18"
+                            Margin="0 0 20 0"
+                            Background="Transparent"
+                            x:Name="OutputDevice">
+                        <Button.Flyout>
+                            <MenuFlyout ItemsSource="{Binding OutputDeviceList}">
+                                <MenuFlyout.ItemTemplate>
+                                    <DataTemplate>
+                                        <MenuItem Click="OutputDeviceSelection" HorizontalAlignment="Stretch">
+                                            <MenuItem.Header>
+                                                <TextBlock Text="{Binding}" TextWrapping="Wrap" MaxWidth="200"/>
+                                            </MenuItem.Header>
+                                        </MenuItem>
+                                    </DataTemplate>
+                                </MenuFlyout.ItemTemplate>
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+                </Grid>
+                
+                <Border Height="12"/>
+                
+                <DockPanel LastChildFill="True">
+                    <TextBlock DockPanel.Dock="Left"
+                               Text="Scale"
+                               FontSize="18"
+                               Foreground="White"
+                               Margin="0,0,60,0"
+                               VerticalAlignment="Center"/>
+
+                    <Slider Minimum="0.1"
+                            Maximum="2.0"
+                            TickFrequency="0.1"
+                            IsSnapToTickEnabled="True"
+                            Value="{Binding _settings.scale, Mode=TwoWay}"
+                            Foreground="White"/>
+                </DockPanel>
+                
+                <Border Height="20"/>
+                
+                <Grid>
+                    <TextBlock Text="Light Mode" FontSize="18" Foreground="White" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                    <ToggleSwitch IsChecked="{Binding _settings.light}" Margin="0,0,20,0" HorizontalAlignment="Right"/>
+                </Grid>
+                
+                <Border Height="20"/>
+                
+                <Grid>
+                    <TextBlock Text="Display Channel Peaks" FontSize="18" Foreground="White" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                    <ToggleSwitch IsChecked="{Binding _settings.peaks}" Margin="0,0,20,0" HorizontalAlignment="Right"/>
+                </Grid>
+                
+                <Border Height="20"/>
+                
+                <Grid>
+                    <TextBlock Text="Open On Startup" FontSize="18" Foreground="White" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                    <ToggleSwitch IsChecked="{Binding _settings.startup}" Margin="0,0,20,0" HorizontalAlignment="Right"/>
+                </Grid>
+                
+                <Border Height="20"/>
+                
+                <Grid>
+                    <TextBlock Text="Stay In System Tray" FontSize="18" Foreground="White" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                    <ToggleSwitch IsChecked="{Binding _settings.tray}" Margin="0,0,20,0" HorizontalAlignment="Right"/>
+                </Grid>
+            </StackPanel>
+        </DockPanel>
+    </Grid>
 </UserControl>
