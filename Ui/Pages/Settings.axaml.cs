@@ -24,8 +24,13 @@ public partial class SettingsPage : UserControl, INotifyPropertyChanged
     public ObservableCollection<string> OutputDeviceList { get; set; } = new();
     
     public string version { get; set; }
-    
-    public SettingsPage(EventHandler<SettingsClass> func, SettingsClass settings, InvokeRequest invokeRequest)
+
+    public SettingsPage()
+    {
+        InitializeComponent();
+    }
+
+    public async void Load(EventHandler<SettingsClass> func, SettingsClass settings, InvokeRequest invokeRequest)
     {
         _settings = settings;
         ReloadWindowSettings = func;
@@ -33,8 +38,7 @@ public partial class SettingsPage : UserControl, INotifyPropertyChanged
 
         MakeOutputList();
         Version();
-        
-        InitializeComponent();
+
         DataContext = this;
     }
 

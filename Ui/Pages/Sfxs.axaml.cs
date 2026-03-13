@@ -53,14 +53,18 @@ public partial class SfxsPage : UserControl
         get => GetValue(ColumnCountProperty);
         set => SetValue(ColumnCountProperty, value);
     }
-    
-    public SfxsPage(InvokeRequest request)
+
+    public SfxsPage()
     {
         InitializeComponent();
+    }
+
+    public async void Load(InvokeRequest request)
+    {
         DataContext = this;
-        
+
         _invokeRequest = request;
-        
+
         Refresh();
     }
     

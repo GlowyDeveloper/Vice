@@ -8,7 +8,14 @@
         <PublishSingleFile>true</PublishSingleFile>
         <SelfContained>true</SelfContained>
         <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+        <StripSymbols>true</StripSymbols>
+        <InvariantGlobalization>true</InvariantGlobalization>
+        <IlcOptimizationPreference>Speed</IlcOptimizationPreference>
+        <ReadyToRun>true</ReadyToRun>
+
         <PublishTrimmed>true</PublishTrimmed>
+        <TrimMode>link</TrimMode>
+        <TrimmerRemoveSymbols>true</TrimmerRemoveSymbols>
 
         <AssemblyTitle>Vice Ui</AssemblyTitle>
         <AssemblyProduct>Vice Ui</AssemblyProduct>
@@ -56,3 +63,14 @@
       </Compile>
     </ItemGroup>
 </Project>
+
+<!--
+
+        <PublishTrimmed>true</PublishTrimmed>
+        <TrimMode>link</TrimMode>
+        <TrimmerRemoveSymbols>true</TrimmerRemoveSymbols>
+        <PublishAot>true</PublishAot>
+        <StripSymbols>true</StripSymbols>
+        <InvariantGlobalization>true</InvariantGlobalization>
+        <IlcOptimizationPreference>Speed</IlcOptimizationPreference>
+-->

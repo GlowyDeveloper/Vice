@@ -24,16 +24,32 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     
     public static readonly StyledProperty<bool> IsPaneOpenProperty =
         AvaloniaProperty.Register<MainWindow, bool>(nameof(IsPaneOpen));
-    
-    private MainWindow(SettingsClass settings, InvokeRequest invokeRequest)
+
+    public MainWindow()
     {
-        _invokeRequest = invokeRequest;
-        _settings = settings;
-        
         InitializeComponent();
+    }
+    
+    public async void InitilizeAsync()
+    {
+        try
+        {
+            _invokeRequest = new InvokeRequest();
+            var result = await _invokeRequest.SendRequestAsync("get_settings");
+            _settings = JsonConvert.DeserializeObject<SettingsClass>(result)!;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Settings parsing error: {ex}");
+            throw;
+        }
+
         DataContext = this;
 
-        PageHost.Content = new ChannelsPage(_invokeRequest);
+        var page = new ChannelsPage();
+        page.Load(_invokeRequest);
+
+        PageHost.Content = page;
         ChannelsItem.IsSelected = true;
 
         ChannelsItem.PointerPressed += (_, _) => Navigate(ChannelsItem);
@@ -43,23 +59,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         SettingsItem.PointerPressed += (_, _) => Navigate(SettingsItem);
         
         Closing += OnClosing;
-    }
-    
-    public static async Task<MainWindow> CreateAsync()
-    {
-        try
-        {
-            var invokeRequest = new InvokeRequest();
-            var result = await invokeRequest.SendRequestAsync("get_settings");
-            var parsed = JsonConvert.DeserializeObject<SettingsClass>(result);
-
-            return new MainWindow(parsed!, invokeRequest);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Settings parsing error: {ex}");
-            throw;
-        }
     }
     
     private async void OnClosing(object? sender, WindowClosingEventArgs e)
@@ -85,10 +84,16 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         switch (item.Name)
         {
             case "ChannelsItem":
-                PageHost.Content = new ChannelsPage(_invokeRequest);
+                var channelsPage = new ChannelsPage();
+                channelsPage.Load(_invokeRequest);
+
+                PageHost.Content = channelsPage;
                 break;
             case "SfxsItem":
-                PageHost.Content = new SfxsPage(_invokeRequest);
+                var sfxsPage = new SfxsPage();
+                sfxsPage.Load(_invokeRequest);
+
+                PageHost.Content = sfxsPage;
                 break;
             case "EffectsItem":
                 PageHost.Content = new EffectsPage();
@@ -97,7 +102,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 PageHost.Content = new PerformancePage();
                 break;
             case "SettingsItem":
-                PageHost.Content = new SettingsPage(Reload, _settings, _invokeRequest);
+                var settingsPage = new SettingsPage();
+                settingsPage.Load(Reload, _settings, _invokeRequest);
+                
+                PageHost.Content = settingsPage;
                 break;
         }
     }

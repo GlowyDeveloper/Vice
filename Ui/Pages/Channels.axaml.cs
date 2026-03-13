@@ -54,15 +54,19 @@ public partial class ChannelsPage : UserControl
         set => SetValue(ItemsWidthProperty, value);
     }
     
-    public ChannelsPage(InvokeRequest request)
+    public ChannelsPage()
     {
         InitializeComponent();
+    }
+
+    public async void Load(InvokeRequest request)
+    {
         DataContext = this;
 
         _invokeRequest = request;
-        
+
         Refresh();
-        
+
         //TODO: Volume bars
     }
     

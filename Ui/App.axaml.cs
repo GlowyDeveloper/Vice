@@ -15,7 +15,8 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var window = await MainWindow.CreateAsync();
+            var window = new MainWindow();
+            window.InitilizeAsync();
             desktop.MainWindow = window;
             window.Show();
         }
