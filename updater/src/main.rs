@@ -325,7 +325,7 @@ fn update(old_path: String, debug: String) -> Result<(), Box<dyn std::error::Err
     let escaped = old_path.replace("&", "^&");
 
     let _ = Command::new("cmd")
-        .args(["/C", "start", "", &escaped])
+        .args(["/C", "start", "", &escaped, "--changelog"])
         .spawn();
 
     print!("\rOpened new version...      ");

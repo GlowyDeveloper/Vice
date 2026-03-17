@@ -613,6 +613,17 @@ pub fn run() {
     app.borrow_mut().keys = keys;
     register_keybinds(&app);
 
+    if args.contains(&"--changelog".to_string()) {
+        thread::spawn(|| {
+            rfd::MessageDialog::new()
+                .set_buttons(rfd::MessageButtons::Ok)
+                .set_title("Change Log")
+                .set_description("Nothing here right now.")
+                .set_level(rfd::MessageLevel::Info)
+                .show();
+        });
+    }
+
     event_loop.run(move |event, event_loop_target, control_flow| {
         *control_flow = ControlFlow::WaitUntil(
             std::time::Instant::now() + Duration::from_millis(16)
