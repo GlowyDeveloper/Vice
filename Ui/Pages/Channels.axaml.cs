@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
 using Avalonia.Media;
-using Newtonsoft.Json;
 using Vice.Ui.Utils;
 
 namespace Vice.Ui.Pages;
@@ -102,7 +102,7 @@ public partial class ChannelsPage : UserControl
         try
         {
             var result = await _invokeRequest.SendRequestAsync("get_channels");
-            var parsed = JsonConvert.DeserializeObject<List<ChannelsClass>>(result);
+            var parsed = JsonSerializer.Deserialize(result, JsonContext.Default.ListChannelsClass);
 
             foreach (var item in parsed)
             {
@@ -139,7 +139,7 @@ public partial class ChannelsPage : UserControl
             try
             {
                 var result = await _invokeRequest.SendRequestAsync("get_apps");
-                var parsed = JsonConvert.DeserializeObject<List<string>>(result);
+                var parsed = JsonSerializer.Deserialize(result, JsonContext.Default.ListString);
                 
                 foreach (var item in parsed)
                 {
@@ -157,7 +157,7 @@ public partial class ChannelsPage : UserControl
             try
             {
                 var result = await _invokeRequest.SendRequestAsync("get_devices");
-                var parsed = JsonConvert.DeserializeObject<List<string>>(result);
+                var parsed = JsonSerializer.Deserialize(result, JsonContext.Default.ListString);
                 
                 foreach (var item in parsed)
                 {

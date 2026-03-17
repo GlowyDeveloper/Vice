@@ -3,10 +3,9 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
-using Newtonsoft.Json;
 using Vice.Ui.Utils;
 
 namespace Vice.Ui.Pages;
@@ -16,7 +15,7 @@ public partial class SettingsPage : UserControl, INotifyPropertyChanged
     private InvokeRequest _invokeRequest;
     public SettingsClass _settings { get; set; }
     private event EventHandler<SettingsClass>? ReloadWindowSettings;
-    
+
     public event PropertyChangedEventHandler? PropertyChanged;
     private void OnPropertyChanged([CallerMemberName] string? propname = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propname));
@@ -49,7 +48,7 @@ public partial class SettingsPage : UserControl, INotifyPropertyChanged
         try
         {
             var result = await _invokeRequest.SendRequestAsync("get_outputs");
-            var parsed = JsonConvert.DeserializeObject<List<string>>(result);
+            var parsed = JsonSerializer.Deserialize(result, JsonContext.Default.ListString);
             
             foreach (var item in parsed)
             {

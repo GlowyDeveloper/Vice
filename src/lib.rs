@@ -658,7 +658,6 @@ pub fn run() {
     audio::start();
     performance::start();
     files::create_files();
-    ui::check_if_ui_is_installed();
     ui::run_ipc();
 
     let args: Vec<String> = std::env::args().collect();

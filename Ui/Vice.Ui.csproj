@@ -3,19 +3,14 @@
         <OutputType>WinExe</OutputType>
         <TargetFramework>net10.0</TargetFramework>
         <Nullable>enable</Nullable>
-        <ApplicationManifest>app.manifest</ApplicationManifest>
-        <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
-        <PublishSingleFile>true</PublishSingleFile>
-        <SelfContained>true</SelfContained>
-        <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-        <StripSymbols>true</StripSymbols>
-        <InvariantGlobalization>true</InvariantGlobalization>
-        <IlcOptimizationPreference>Speed</IlcOptimizationPreference>
-        <ReadyToRun>true</ReadyToRun>
+        <PublishAot>true</PublishAot>
 
         <PublishTrimmed>true</PublishTrimmed>
         <TrimMode>link</TrimMode>
         <TrimmerRemoveSymbols>true</TrimmerRemoveSymbols>
+        <StripSymbols>true</StripSymbols>
+        <InvariantGlobalization>true</InvariantGlobalization>
+        <IlcOptimizationPreference>Speed</IlcOptimizationPreference>
 
         <AssemblyTitle>Vice Ui</AssemblyTitle>
         <AssemblyProduct>Vice Ui</AssemblyProduct>
@@ -23,11 +18,15 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <DirectPInvoke Include="libSkiaSharp" />
+        <DirectPInvoke Include="libHarfBuzzSharp" />
+    </ItemGroup>
+
+    <ItemGroup>
         <AvaloniaResource Include="Assets\icon.ico" />
         <AvaloniaResource Include="Assets\**\*.png" />
         
         <PackageReference Include="Avalonia" Version="11.3.11"/>
-        
         <PackageReference Include="Avalonia.Controls.ColorPicker" Version="11.3.11" />
         <PackageReference Include="Avalonia.Desktop" Version="11.3.11"/>
         <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.11"/>
@@ -37,7 +36,7 @@
             <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
             <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
         </PackageReference>
-        <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+        <PackageReference Include="2ndLAB.SkiaSharp.Static" Version="2.88.9-10.0.26100.0-1.1c7d845" />
     </ItemGroup>
 
     <ItemGroup>
@@ -63,14 +62,3 @@
       </Compile>
     </ItemGroup>
 </Project>
-
-<!--
-
-        <PublishTrimmed>true</PublishTrimmed>
-        <TrimMode>link</TrimMode>
-        <TrimmerRemoveSymbols>true</TrimmerRemoveSymbols>
-        <PublishAot>true</PublishAot>
-        <StripSymbols>true</StripSymbols>
-        <InvariantGlobalization>true</InvariantGlobalization>
-        <IlcOptimizationPreference>Speed</IlcOptimizationPreference>
--->

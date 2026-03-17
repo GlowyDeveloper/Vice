@@ -5,7 +5,8 @@
              xmlns:converters="clr-namespace:Vice.Ui.Converters"
              xmlns:controls="clr-namespace:Vice.Ui.Controls"
              x:DataType="local:ChannelsPage"
-             xmlns:cp="clr-namespace:Avalonia.Controls;assembly=Avalonia.Controls.ColorPicker">
+             xmlns:cp="clr-namespace:Avalonia.Controls;assembly=Avalonia.Controls.ColorPicker"
+             x:CompileBindings="True">
     
     <UserControl.Resources>
         <converters:InverseBoolConverter x:Key="InverseBoolConverter"/>

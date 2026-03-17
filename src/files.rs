@@ -98,10 +98,6 @@ pub(crate) fn blocks_base() -> PathBuf {
     app_base().join("Blocks")
 }
 
-pub(crate) fn bins_base() -> PathBuf {
-    app_base().join("Bins")
-}
-
 fn settings_json() -> PathBuf {
     app_base().join("settings.json")
 }
@@ -146,14 +142,6 @@ pub(crate) fn create_files() {
     if !blocks_path.exists() {
         if let Err(e) = fs::create_dir_all(blocks_path) {
             eprintln!("Failed to create blocks directory: {}", e);
-        }
-    }
-
-    let bins_path: PathBuf = bins_base();
-
-    if !bins_path.exists() {
-        if let Err(e) = fs::create_dir_all(bins_path) {
-            eprintln!("Failed to create bins directory: {}", e);
         }
     }
 

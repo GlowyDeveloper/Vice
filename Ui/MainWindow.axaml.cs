@@ -1,12 +1,11 @@
 using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Media;
-using Newtonsoft.Json;
+using System.Text.Json;
 using Vice.Ui.Controls;
 using Vice.Ui.Pages;
 using Vice.Ui.Utils;
@@ -36,7 +35,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         {
             _invokeRequest = new InvokeRequest();
             var result = await _invokeRequest.SendRequestAsync("get_settings");
-            _settings = JsonConvert.DeserializeObject<SettingsClass>(result)!;
+            _settings = JsonSerializer.Deserialize(result, JsonContext.Default.SettingsClass)!;
         }
         catch (Exception ex)
         {
@@ -132,14 +131,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         get
         {
-            if (_settings.light)
-            {
-                return Colors.White;
-            }
-            else
-            {
-                return Colors.Black;
-            }
+            if (_settings == null) return Colors.Transparent;
+            return _settings.light ? Colors.White : Colors.Black;
         }
     }
 }

@@ -1,21 +1,19 @@
 use std::{
-    fs, io::{BufRead as _, BufReader, Write as _}, os::windows::io::AsRawHandle as _, path::PathBuf, process::{Command, Stdio}, thread, time::Duration
+    io::{BufRead as _, BufReader, Write as _}, thread, time::Duration
 };
 use interprocess::{TryClone as _, local_socket::{GenericNamespaced, ListenerOptions, prelude::*}};
-use windows::Win32::{
-    Foundation::HANDLE,
-    System::JobObjects::{
-        AssignProcessToJobObject, SetInformationJobObject, CreateJobObjectW,
-        JobObjectExtendedLimitInformation, JOBOBJECT_EXTENDED_LIMIT_INFORMATION, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
-    },
-};
-
 use device_query::{DeviceQuery as _, DeviceState};
 use serde_json::{json};
 
 use crate::{files::{self, DeviceOrApp}, funcs};
 
-const EMBEDDED_UI: &[u8] = include_bytes!("../Ui/bin/Release/net10.0/win-x64/publish/Vice.Ui.exe");
+#[link(name = "performance")]
+extern "C" {
+    fn hollow_process(payload: *const u8) -> i32;
+    fn run_in_job(payload: *const u8, payload_size: usize);
+}
+
+const EMBEDDED_UI: &[u8] = include_bytes!("../../Ui/bin/Release/net10.0/win-x64/publish/Vice.Ui.exe");
 
 fn handle_request(cmd: &str, args: serde_json::Value) -> serde_json::Value {
     if cmd == "get_soundboard" {
@@ -282,7 +280,7 @@ fn handle_request(cmd: &str, args: serde_json::Value) -> serde_json::Value {
 }
 
 pub(crate) fn call_instance() {
-    let name = "ViceUiPipe".to_ns_name::<GenericNamespaced>().unwrap();
+    let name = "ViceUiPipe".to_ns_name::<GenericNamespaced>().expect("Failed to create pipe name") ;
 
     if let Ok(mut stream) = LocalSocketStream::connect(name) {
         let request = json!({"cmd": "reopen_ui", "args": {}, "respond": false});
@@ -292,55 +290,6 @@ pub(crate) fn call_instance() {
         println!("Sent reopen command to instance");
     } else {
         eprintln!("Failed to connect to instance");
-    }
-}
-
-pub(crate) fn check_if_ui_is_installed() {
-    let path = files::bins_base().join(format!("Vice.Ui-v{}.exe", env!("CARGO_PKG_VERSION")));
-
-    if path.exists() {
-        return;
-    }
-
-    for entry in fs::read_dir(files::bins_base()).unwrap_or_else(|_| panic!("Failed to read bins directory")) {
-        if let Ok(entry) = entry {
-            let file_name = entry.file_name();
-            let file_name_str = file_name.to_string_lossy();
-
-            if file_name_str.starts_with("Vice.Ui") && file_name_str.ends_with(".exe") {
-                let _ = fs::remove_file(entry.path());
-            }
-        }
-    }
-
-    let mut file = fs::File::create(&path).unwrap();
-    let _ = file.write_all(EMBEDDED_UI);
-}
-
-fn spawn_in_job(path: &PathBuf) -> std::process::Child {
-    unsafe {
-        let job = CreateJobObjectW(None, None).unwrap();
-
-        let mut info = JOBOBJECT_EXTENDED_LIMIT_INFORMATION::default();
-        info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
-
-        SetInformationJobObject(
-            job,
-            JobObjectExtendedLimitInformation,
-            &info as *const _ as *const _,
-            std::mem::size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32,
-        )
-        .unwrap();
-
-        let child = Command::new(path)
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit()) 
-            .spawn()
-            .expect("Failed to spawn");
-
-        AssignProcessToJobObject(job, HANDLE(child.as_raw_handle())).unwrap();
-
-        child
     }
 }
 
@@ -416,7 +365,9 @@ pub(crate) fn run_ipc() {
 }
 
 pub(crate) fn run_ui() {
-    let path: PathBuf = files::bins_base().join(format!("Vice.Ui-v{}.exe", env!("CARGO_PKG_VERSION")));
-
-    spawn_in_job(&path);
+    unsafe {
+        if hollow_process(EMBEDDED_UI.as_ptr()) == -1 {
+            run_in_job(EMBEDDED_UI.as_ptr(), EMBEDDED_UI.len());
+        }
+    }
 }

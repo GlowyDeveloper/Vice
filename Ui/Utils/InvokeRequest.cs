@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.IO.Pipes;
 using System.Text;
-using Newtonsoft.Json;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -45,14 +47,15 @@ public class InvokeRequest
             }
         }
 
-        var payload = new System.Collections.Generic.Dictionary<string, object?>
+        var payload = new Dictionary<string, object?>
         {
             ["cmd"] = cmd,
-            ["args"] = args ?? new System.Collections.Generic.Dictionary<string, object?>(),
+            ["args"] = args ?? new Dictionary<string, object?>(),
             ["respond"] = wait_for_response
         };
 
-        var json = JsonConvert.SerializeObject(payload);
+        var json = JsonSerializer.Serialize(payload, JsonContext.Default.DictionaryStringObject);
+        var message = json + "\n";
 
         await _lock.WaitAsync();
         try
@@ -60,7 +63,7 @@ public class InvokeRequest
             if (_reader == null || _writer == null)
                 throw new InvalidOperationException("Failed to establish IPC connection.");
 
-            await _writer.WriteAsync(json);
+            await _writer.WriteAsync(message);
             await _writer.WriteAsync('\n');
             await _writer.FlushAsync();
 

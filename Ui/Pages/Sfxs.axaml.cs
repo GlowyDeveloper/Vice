@@ -10,7 +10,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
-using Newtonsoft.Json;
+using System.Text.Json;
 using Vice.Ui.Utils;
 
 namespace Vice.Ui.Pages;
@@ -84,7 +84,7 @@ public partial class SfxsPage : UserControl
         try
         {
             var result = await _invokeRequest.SendRequestAsync("get_soundboard");
-            var parsed = JsonConvert.DeserializeObject<List<SFXClass>>(result);
+            var parsed = JsonSerializer.Deserialize(result, JsonContext.Default.ListSFXClass);
 
             foreach (var item in parsed)
             {

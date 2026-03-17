@@ -11,7 +11,8 @@
         TransparencyLevelHint="AcrylicBlur"
         ExtendClientAreaToDecorationsHint="True"
         Icon="/Assets/icon.ico"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen"
+        x:CompileBindings="True">
 
     <Panel>
         <ExperimentalAcrylicBorder IsHitTestVisible="False">

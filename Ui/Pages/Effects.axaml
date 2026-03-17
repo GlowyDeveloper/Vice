@@ -1,6 +1,7 @@
 ﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="Vice.Ui.Pages.EffectsPage">
+             x:Class="Vice.Ui.Pages.EffectsPage"
+             x:CompileBindings="True">
 
     <TextBlock Text="Effects Page"
                HorizontalAlignment="Center"

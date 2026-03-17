@@ -2,7 +2,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Vice.Ui.Pages.SettingsPage"
              xmlns:local="clr-namespace:Vice.Ui.Pages"
-             x:DataType="local:SettingsPage">
+             x:DataType="local:SettingsPage"
+             x:CompileBindings="True">
 
     <Grid>
         <Grid.RowDefinitions>
