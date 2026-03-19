@@ -2,7 +2,7 @@ use std::{
     ffi::{CStr, CString, c_char}, fs, sync::atomic::{AtomicBool, Ordering}, thread
 };
 
-use crate::files::{self, Channel};
+use crate::{critical, error, warn, files::{self, Channel}, log};
 
 #[link(name = "audio")]
 unsafe extern "C" {
@@ -19,6 +19,22 @@ unsafe extern "C" {
     fn get_volume_display(key: *const c_char) -> f32;
 }
 
+#[no_mangle]
+pub extern "C" fn error(info: *const c_char) {
+    unsafe {
+        let string = CStr::from_ptr(info).to_string_lossy().into_owned();
+        error!("{}", string);
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn warn(info: *const c_char) {
+    unsafe {
+        let string = CStr::from_ptr(info).to_string_lossy().into_owned();
+        warn!("{}", string);
+    }
+}
+
 fn get_blocks(channel_name: String) -> String {
     let path: std::path::PathBuf = files::blocks_base().join(format!("{}.json", channel_name));
     let mut json_str: String = "[]".to_string();
@@ -26,7 +42,7 @@ fn get_blocks(channel_name: String) -> String {
         match fs::read_to_string(path) {
             Ok(content) => {json_str = content;},
             Err(e) => {
-                eprintln!("Failed to read blocks file for item \"{}\": {:#?}", channel_name, e);
+                error!("Failed to read blocks file for item \"{}\": {:#?}", channel_name, e);
             }
         };
     }
@@ -34,7 +50,7 @@ fn get_blocks(channel_name: String) -> String {
     let json: serde_json::Value = match serde_json::from_str::<serde_json::Value>(&json_str) {
         Ok(p) => p,
         Err(e) => {
-            eprintln!("Failed to parse blocks file: {}", e);
+            error!("Failed to parse blocks file: {}", e);
             serde_json::json!([])
         }
     };
@@ -185,8 +201,7 @@ pub(crate) fn get_volume_parsed(name: String) -> String {
 
 pub(crate) fn start() {
     if unsafe {stop_audio.load(Ordering::SeqCst) == false} {
-        println!("Audio threads already running");
-        println!("Please restart audio threads instead.");
+        log!("Audio threads already running");
         return;
     }
 
@@ -197,7 +212,7 @@ pub(crate) fn start() {
     let channels: Vec<Channel> = files::get_channels();
 
     if channels.is_empty() {
-        println!("No threads to create");
+        log!("No threads to create");
         return;
     }
 
@@ -220,18 +235,19 @@ pub(crate) fn start() {
                     manage_app(channel.device, files::get_settings().output, channel.lowlatency, channel.name);
                 }
             }) {
-            eprintln!("Failed to spawn audio thread \"{}\": {}", thread_name, e);
+
+            critical!("Failed to spawn audio thread \"{}\": {}", thread_name, e);
         }
     }
 
-    println!("Created audio threads");
+    log!("Created audio threads");
 }
 
 pub(crate) fn restart() {
     thread::Builder::new()
         .name("audio_restart".to_string())
         .spawn(|| {
-            println!("Restarting audio threads");
+            log!("Restarting audio threads");
 
             unsafe {
                 reset_volume();

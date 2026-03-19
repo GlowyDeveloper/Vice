@@ -34,6 +34,11 @@ static std::vector<std::string> storage;
 static std::vector<const char*> c_strs;
 static std::vector<std::unique_ptr<char[]>> c_copies;
 
+extern "C" {
+    void error(const char* info);
+    void warn(const char* info);
+}
+
 #pragma region Helpers
 std::string wideToUtf8(const wchar_t* wstr) {
     if (!wstr) return {};
@@ -564,23 +569,26 @@ extern "C" {
         PCMResult result = loadPCM(file);
         if (result.result != 0) {
             if (result.result == 1) {
-                std::cerr << "Failed to load \"" << file << "\": Unrecognized file format\n";
+                std::string msg = std::string("Failed to load \"") + file + "\": Unrecognized file format";
+                error(msg.c_str());
                 return;
             } else {
-                std::cerr << "Failed to load \"" << file << "\": File doesn't exist or the file is in use\n";
+                std::string msg = std::string("Failed to load \"") + file + "\": File doesn't exist or the file is in use";
+                error(msg.c_str());
                 return;
             }
         }
 
         PCMData pcm = result.pcm;
-        if (!pcm.buffer || pcm.channels <= 0) {
-            if (!pcm.buffer) {
-                std::cerr << "Failed to load \"" << file << "\": No audio data\n";
-                return;
-            } else {
-                std::cerr << "Failed to load \"" << file << "\": No channels\n";
-                return;
-            }
+        if (!pcm.buffer) {
+            std::string msg = std::string("Failed to load \"") + file + "\": No audio data";
+            error(msg.c_str());
+            return;
+        }
+        if (pcm.channels <= 0) {
+            std::string msg = std::string("Failed to load \"") + file + "\": No channels";
+            error(msg.c_str());
+            return;
         }
 
         CoInitialize(nullptr);
@@ -594,7 +602,8 @@ extern "C" {
         }
 
         if (!targetDevice) {
-            std::cerr << "No audio device found\n";
+            std::string msg = "No audio device found";
+            error(msg.c_str());
             CoUninitialize();
             return;
         }
@@ -658,7 +667,8 @@ extern "C" {
                 out32[i] = static_cast<int32_t>(v * 2147483647.f);
             }
         } else {
-            std::cerr << "Unsupported device format\n";
+            std::string msg = "Unsupported device format";
+            error(msg.c_str());
             CoTaskMemFree(pwfx);
             audioClient->Release();
             targetDevice->Release();
@@ -668,7 +678,9 @@ extern "C" {
 
         REFERENCE_TIME bufferDuration = low_latency ? 100000 : 500000;
         if (FAILED(audioClient->Initialize(AUDCLNT_SHAREMODE_SHARED, 0, bufferDuration, 0, pwfx, nullptr))) {
-            std::cerr << "AudioClient Initialize failed\n";
+            std::string msg = "AudioClient Initialize failed";
+            error(msg.c_str());
+
             CoTaskMemFree(pwfx);
             audioClient->Release();
             targetDevice->Release();
@@ -738,7 +750,9 @@ extern "C" {
         }
 
         if (!captureDevice || !renderDevice) {
-            std::cerr << "WASAPI: could not find capture or render device\n";
+            std::string msg = "Could not find capture or render device";
+            error(msg.c_str());
+
             if (captureDevice) captureDevice->Release();
             if (renderDevice) renderDevice->Release();
             if (pEnum) pEnum->Release();
@@ -751,7 +765,9 @@ extern "C" {
         IAudioClient* renderClient  = nullptr;
         if (FAILED(captureDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&captureClient)) ||
             FAILED(renderDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&renderClient))) {
-            std::cerr << "WASAPI: failed to activate client\n";
+            std::string msg = "Failed to activate client";
+            error(msg.c_str());
+
             captureDevice->Release();
             renderDevice->Release();
             CoUninitialize();
@@ -761,14 +777,17 @@ extern "C" {
         WAVEFORMATEX* wfCapture = nullptr;
         WAVEFORMATEX* wfRender  = nullptr;
         if (FAILED(captureClient->GetMixFormat(&wfCapture)) || FAILED(renderClient->GetMixFormat(&wfRender)) || !wfCapture || !wfRender) {
-            std::cerr << "WASAPI: GetMixFormat failed\n";
+            std::string msg = "GetMixFormat failed";
+            error(msg.c_str());
+
             if (wfCapture) CoTaskMemFree(wfCapture);
             if (wfRender) CoTaskMemFree(wfRender);
             captureClient->Release();
             renderClient->Release();
             captureDevice->Release();
             renderDevice->Release();
-            CoUninitialize(); return;
+            CoUninitialize();
+            return;
         }
 
         bool captureIsFloat = is_format_float(wfCapture);
@@ -777,7 +796,9 @@ extern "C" {
         REFERENCE_TIME bufferDuration = low_latency ? 100000 : 500000;
         if (FAILED(captureClient->Initialize(AUDCLNT_SHAREMODE_SHARED, 0, bufferDuration, 0, wfCapture, nullptr)) ||
             FAILED(renderClient->Initialize(AUDCLNT_SHAREMODE_SHARED, 0, bufferDuration, 0, wfRender, nullptr))) {
-            std::cerr << "WASAPI: Initialize failed\n";
+            std::string msg = "Initialize failed";
+            error(msg.c_str());
+
             CoTaskMemFree(wfCapture);
             CoTaskMemFree(wfRender);
             captureClient->Release();
@@ -791,7 +812,9 @@ extern "C" {
         IAudioRenderClient*  pRender  = nullptr;
         if (FAILED(captureClient->GetService(__uuidof(IAudioCaptureClient), (void**)&pCapture)) ||
             FAILED(renderClient->GetService(__uuidof(IAudioRenderClient), (void**)&pRender))) {
-            std::cerr << "WASAPI: GetService failed\n";
+            std::string msg = "GetService failed";
+            error(msg.c_str());
+
             CoTaskMemFree(wfCapture);
             CoTaskMemFree(wfRender);
             captureClient->Release();
@@ -957,7 +980,9 @@ extern "C" {
         }
         CloseHandle(hSnap);
         if (!targetPid) {
-            std::cerr << "Process not found: " << input << "\n";
+            std::string msg = std::string("Process not found: ") + input;
+            error(msg.c_str());
+
             CoUninitialize();
             return;
         }
@@ -971,7 +996,9 @@ extern "C" {
         if (!renderDevice)
             pEnum->GetDefaultAudioEndpoint(eRender, eConsole, &renderDevice);
         if (!renderDevice) {
-            std::cerr << "No render device found\n";
+            std::string msg = "No render device found";
+            error(msg.c_str());
+
             pEnum->Release();
             CoUninitialize();
             return;
@@ -1030,7 +1057,9 @@ extern "C" {
         devicesAll->Release();
 
         if (!captureDevice) {
-            std::cerr << "Failed to find audio session for PID\n";
+            std::string msg = "Failed to find audio session for PID";
+            error(msg.c_str());
+
             renderDevice->Release();
             pEnum->Release();
             CoUninitialize();
@@ -1038,7 +1067,9 @@ extern "C" {
         }
 
         if (captureDevice == renderDevice) {
-            std::cerr << "Capture and render device are the same. Feedback possible!\n";
+            std::string msg = "Capture and render device are the same. Feedback possible";
+            warn(msg.c_str());
+
             captureDevice->Release();
             renderDevice->Release();
             pEnum->Release();

@@ -5,7 +5,7 @@ use serde::Deserialize;
 
 use crate::files::{self, Channel, Settings, SoundboardSFX};
 use crate::audio::{self};
-use crate::performance;
+use crate::{error, performance, warn};
 
 static SFX_EXTENTIONS: [&str; 6] = ["wav", "mp3", "wma", "aac", "m4a", "flac"];
 
@@ -25,12 +25,12 @@ pub(crate) fn new_sound(color: [u8; 3], icon: String, name: String, sound: Strin
 
     match ext {
         None => {
-            eprintln!("Failed to get extension for soundeffect \"{}\"", name);
+            error!("Failed to get extension for soundeffect \"{}\"", name);
             return Err(format!("Failed to get extension for soundeffect \"{}\"", name));
         }
         Some(o) => {
             if let Err(e) = fs::copy(&sound, files::sfx_base().join(format!("{}.{}", name, o.to_str().unwrap_or("wav")).to_string())) {
-                eprintln!("Failed to copy soundeffect for soundeffect \"{}\": {:#?}", name, e);
+                error!("Failed to copy soundeffect for soundeffect \"{}\": {:#?}", name, e);
                 return Err(format!("Failed to copy soundeffect for soundeffect \"{}\"", name));
             }
         }
@@ -49,7 +49,7 @@ pub(crate) fn edit_channel(color: [u8; 3], icon: String, name: String, deviceapp
         let volume  = channels[pos].volume;
         channels[pos] = Channel{name, icon, color, device: deviceapps, deviceorapp: device, lowlatency: low, volume};
     } else {
-        eprintln!("Channel \"{}\" not found", oldname);
+        error!("Channel \"{}\" not found", name);
         return Err(format!("Channel \"{}\" not found", oldname));
     }
     
@@ -62,7 +62,7 @@ pub(crate) fn edit_soundboard(color: [u8; 3], icon: String, name: String, oldnam
     if let Some(pos) = sfxs.iter().position(|c: &SoundboardSFX| c.name == oldname) {
         sfxs[pos] = SoundboardSFX{name, icon, color, lowlatency: low, keys};
     } else {
-        eprintln!("Soundeffect \"{}\" not found", oldname);
+        error!("Soundeffect \"{}\" not found", name);
         return Err(format!("Soundeffect \"{}\" not found", oldname));
     }
     
@@ -75,7 +75,7 @@ pub(crate) fn delete_channel(name: String) -> Result<(), String> {
     if let Some(pos) = channels.iter().position(|c| c.name == name) {
         channels.remove(pos);
     } else {
-        eprintln!("Channel \"{}\" not found", name);
+        error!("Channel \"{}\" not found", name);
         return Err(format!("Channel \"{}\" not found", name));
     }
     
@@ -88,7 +88,7 @@ pub(crate) fn delete_sound(name: String) -> Result<(), String> {
     if let Some(pos) = sfxs.iter().position(|c: &SoundboardSFX| c.name == name) {
         sfxs.remove(pos);
     } else {
-        eprintln!("Soundeffect \"{}\" not found", name);
+        error!("Soundeffect \"{}\" not found", name);
         return Err(format!("Soundeffect \"{}\" not found", name));
     }
 
@@ -104,7 +104,7 @@ pub(crate) fn delete_sound(name: String) -> Result<(), String> {
     }
 
     if !deleted {
-        eprintln!("No file found for base name \"{}\"", name);
+        error!("No file found for base name \"{}\"", name);
     }
     
     return files::save_soundboard(sfxs);
@@ -164,11 +164,11 @@ pub(crate) fn set_volume(name: String, volume: f32) {
 
         audio::set_volume(channel.name, volume);
     } else {
-        eprintln!("Channel \"{}\" not found", name);
+        error!("Channel \"{}\" not found", name);
         return;
     }
 
-    files::save_channels(channels).unwrap_or_else(|e| eprintln!("Error saving channels: {}", e));
+    files::save_channels(channels).unwrap_or_else(|e| error!("Error saving channels: {}", e));
 }
 
 pub(crate) fn get_outputs() -> Vec<String> {
@@ -186,7 +186,7 @@ pub(crate) fn play_sound(name: String, low: bool) {
     }
 
     if path == "" {
-        eprintln!("Failed to get soundeffect file for soundeffect \"{}\"", name);
+        error!("Failed to get soundeffect file for soundeffect \"{}\"", name);
         return;
     }
 
@@ -275,29 +275,27 @@ pub(crate) fn update() -> Result<String, String> {
 pub(crate) fn save_blocks(item: String, blocks: String) {
     if files::blocks_base().join(format!("{}.json", item)).exists() {
         if let Err(e) = fs::remove_file(files::blocks_base().join(format!("{}.json", item))) {
-            eprintln!("Failed to remove existing blocks file for item \"{}\": {:#?}", item, e);
+            error!("Failed to remove existing blocks file for item \"{}\": {:#?}", item, e);
             return;
         }
     }
 
-    let json: serde_json::Value = match serde_json::from_str::<serde_json::Value>(&blocks) {
-        Ok(p) => p,
+    let pretty: String = match serde_json::from_str::<serde_json::Value>(&blocks) {
+        Ok(v) => match serde_json::to_string_pretty(&v) {
+            Ok(p) => p,
+            Err(e) => {
+                warn!("Failed to make json pretty: {}", e);
+                blocks
+            }
+        },
         Err(e) => {
-            eprintln!("Failed to parse blocks file: {}", e);
-            return;
-        }
-    };
-
-    let pretty: String = match serde_json::to_string_pretty(&json) {
-        Ok(d) => d,
-        Err(e) => {
-            eprintln!("Failed to make json pretty: {}", e);
-            return;
+            error!("Failed to parse blocks file: {}", e);
+            blocks
         }
     };
 
     if let Err(e) = fs::write(files::blocks_base().join(format!("{}.json", item)), pretty) {
-        eprintln!("Failed to write blocks file for item \"{}\": {:#?}", item, e);
+        error!("Failed to write blocks file for item \"{}\": {:#?}", item, e);
         return;
     }
 
@@ -310,7 +308,7 @@ pub(crate) fn load_blocks(item: String) -> String {
         match fs::read_to_string(path) {
             Ok(content) => content,
             Err(e) => {
-                eprintln!("Failed to read blocks file for item \"{}\": {:#?}", item, e);
+                error!("Failed to read blocks file for item \"{}\": {:#?}", item, e);
                 "[]".to_string()
             }
         }

@@ -44,3 +44,4 @@ ico = "0.4.0"
 windows = { version = "0.62.2", features = ["Win32_UI_Shell", "Win32_System_Com", "Win32_Foundation"] }
 global-hotkey = "0.7.0"
 device_query = "4.0.1"
+chrono = "0.4"

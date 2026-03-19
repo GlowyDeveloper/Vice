@@ -14,6 +14,7 @@ mod funcs;
 mod performance;
 mod audio;
 mod files;
+mod log;
 
 #[derive(RustEmbed)]
 #[folder = "flutter/build/web"]
@@ -255,7 +256,7 @@ fn handle_ipc(cmd: &str, args: serde_json::Value, app: &Rc<RefCell<App>>) -> ser
         }
     } else if cmd == "flutter_print" {
         if let Some(text) = args.get("text").and_then(|v| v.as_str()) {
-            println!("{}", text);
+            log!("{}", text);
         }
     } else if cmd == "get_version" {
         let version = env!("CARGO_PKG_VERSION");
@@ -304,7 +305,7 @@ pub fn create_icon() -> Option<(Vec<u8>, u32, u32)> {
     let icon_dir = match ico::IconDir::read(reader) {
         Ok(i) => i,
         Err(e) => {
-            println!("Error occured when getting ico: {:#?}", e);
+            error!("Error occured when getting ico: {:#?}", e);
             return None;
         }
     };
@@ -317,7 +318,7 @@ pub fn create_icon() -> Option<(Vec<u8>, u32, u32)> {
     let image = match entry {
         Some(i) => i,
         None => {
-            println!("Failed to get an entry in ico");
+            error!("Failed to get an entry in ico");
             return None;
         }
     };
@@ -327,7 +328,7 @@ pub fn create_icon() -> Option<(Vec<u8>, u32, u32)> {
             return Some((i.rgba_data().to_vec(), i.width(), i.height()));
         }
         Err(e) => {
-            println!("Failed to decode icon: {:#?}", e);
+            error!("Failed to decode icon: {:#?}", e);
             return None;
         }
     };
@@ -418,7 +419,7 @@ fn register_keybinds(app: &Rc<RefCell<App>>) {
     let hotkeys: Vec<HotKey> = keys.hotkeys.keys().cloned().collect();
 
     if let Err(e) = manager.unregister_all(&hotkeys) {
-        eprintln!("Failed to unregister keybinds: {}", e);
+        warn!("Failed to unregister keybinds: {}", e);
         return;
     }
     let _ = &keys.hotkeys.clear();
@@ -444,7 +445,7 @@ fn register_keybinds(app: &Rc<RefCell<App>>) {
 
         let hotkey = HotKey::new(Some(modifiers), codes.unwrap());
         if let Err(e) = manager.register(hotkey) {
-            eprintln!("Failed to register hotkey: {}", e);
+            warn!("Failed to unregister keybinds: {}", e);
             continue;
         }
         let _ = &keys.hotkeys.insert(hotkey, sfx.name);
@@ -455,12 +456,12 @@ pub fn run_server(ready_tx: &std::sync::mpsc::Sender<()>, proxy: EventLoopProxy<
     let server = match Server::http("127.0.0.1:5923") {
         Ok(s) => s,
         Err(e) => {
-            eprintln!("Failed to bind server to 127.0.0.1:5923: {}", e);
-            let _ = ready_tx.send(());
-            return;
+            critical!("Failed to bind server to 127.0.0.1:5923: {}", e);
+            log::write_crashlog();
+            std::process::exit(1);
         }
     };
-    println!("Server listening on 127.0.0.1:5923");
+    log!("Server listening on 127.0.0.1:5923");
     
     ready_tx.send(()).unwrap();
 
@@ -554,10 +555,17 @@ pub fn create_window(event_loop: &EventLoopWindowTarget<ServerCommand>, proxy: E
 }
 
 pub fn run() {
+    std::env::set_var("RUST_BACKTRACE", "1");
+
+    std::panic::set_hook(Box::new(|panic_info| {
+        critical!("{}", panic_info);
+        log::write_crashlog();
+    }));
+
     if let Ok(client) = reqwest::blocking::Client::builder().timeout(std::time::Duration::from_millis(250)).build() {
         match client.get("http://127.0.0.1:5923").send() {
             Ok(_) => {
-                println!("Calling http://127.0.0.1:5923/webview");
+                log!("Calling http://127.0.0.1:5923/webview");
                 let _ = client.get("http://127.0.0.1:5923/webview").send();
                 std::process::exit(0);
             }
@@ -640,6 +648,7 @@ pub fn run() {
                     app.try_borrow_mut().unwrap().webview = None;
                     app.try_borrow_mut().unwrap().web_context = None;
                 } else {
+                    log::write_debuglog();
                     std::process::exit(0);
                 }
             },
@@ -661,7 +670,7 @@ pub fn run() {
                         
                         match webview.evaluate_script(&js) {
                             Ok(_ret) => {},
-                            Err(e) => eprintln!("Failed to return ipc {:?}", e),
+                            Err(e) => error!("Failed to return ipc {:?}", e),
                         }
                     }
                 },
@@ -672,6 +681,7 @@ pub fn run() {
 
         if let Ok(menu_event) = MenuEvent::receiver().try_recv() {
             if menu_event.id() == quit.id() {
+                log::write_debuglog();
                 std::process::exit(0);
             } else if menu_event.id() == open_ui.id() {
                 create_window(event_loop_target, proxy.clone(), &app, false);
@@ -693,11 +703,11 @@ pub fn run() {
                                 name = n.to_string();
                                 break;
                             } else {
-                                eprintln!("Failed to get name of hotkey");
+                                error!("Failed to get name of hotkey");
                                 break;
                             }
                         } else {
-                            eprintln!("Hotkey not found");
+                            error!("Hotkey not found");
                             break;
                         }
                     }
