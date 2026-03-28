@@ -17,7 +17,7 @@ namespace Vice.Ui.Pages;
 
 public partial class SfxsPage : UserControl
 {
-    private InvokeRequest _invokeRequest;
+    private InvokeRequest? _invokeRequest;
     
     public static readonly StyledProperty<bool> IsLoadedProperty =
         AvaloniaProperty.Register<SfxsPage, bool>(nameof(IsLoaded), false);
@@ -30,7 +30,7 @@ public partial class SfxsPage : UserControl
 
     public ObservableCollection<SfxItemTemplate> Items { get; set; } = new();
 
-    public bool IsLoaded
+    public new bool IsLoaded
     {
         get => GetValue(IsLoadedProperty);
         set => SetValue(IsLoadedProperty, value);
@@ -83,10 +83,10 @@ public partial class SfxsPage : UserControl
 
         try
         {
-            var result = await _invokeRequest.SendRequestAsync("get_soundboard");
+            var result = await _invokeRequest!.SendRequestAsync("get_soundboard");
             var parsed = JsonSerializer.Deserialize(result, JsonContext.Default.ListSFXClass);
 
-            foreach (var item in parsed)
+            foreach (var item in parsed!)
             {
                 var itemTemplate = new SfxItemTemplate(
                     item.name,
@@ -113,9 +113,9 @@ public partial class SfxsPage : UserControl
     
     private async void DeleteItem(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        if (sender is MenuItem btn && btn.Parent.Parent.Parent.Parent.Parent is Border border)
+        if (sender is MenuItem btn && btn.Parent!.Parent!.Parent!.Parent!.Parent is Border border)
         {
-            await _invokeRequest.SendRequestAsync(
+            await _invokeRequest!.SendRequestAsync(
                 "delete_sound",
                 new Dictionary<string, object> { { "name", (border.Tag as string)! } },
                 false
@@ -166,13 +166,13 @@ public partial class SfxsPage : UserControl
     private async void SaveButtonClick(object? sender, RoutedEventArgs e)
     {
         List<byte> parsedColor = new List<byte>();
-        parsedColor.Add(EditedItemTemplate.Color.R);
+        parsedColor.Add(EditedItemTemplate!.Color.R);
         parsedColor.Add(EditedItemTemplate.Color.G);
         parsedColor.Add(EditedItemTemplate.Color.B);
 
         if (EditedItemTemplate.CreatingNew)
         {
-            await _invokeRequest.SendRequestAsync(
+            await _invokeRequest!.SendRequestAsync(
                 "new_sound",
                 new Dictionary<string, object> { { "name", EditedItemTemplate.name }, { "icon", EditedItemTemplate.icon }, { "color", parsedColor }, { "low", EditedItemTemplate.lowlatency }, { "keys", EditedItemTemplate.keys }, { "sound", EditedItemTemplate.sound } },
                 false
@@ -180,7 +180,7 @@ public partial class SfxsPage : UserControl
         }
         else
         {
-            await _invokeRequest.SendRequestAsync(
+            await _invokeRequest!.SendRequestAsync(
                 "edit_sound",
                 new Dictionary<string, object> { { "name", EditedItemTemplate.name }, { "icon", EditedItemTemplate.icon },  { "color", parsedColor }, { "low", EditedItemTemplate.lowlatency }, { "oldname", EditedItemTemplate.OldName }, { "keys", EditedItemTemplate.keys } },
                 false
@@ -210,7 +210,7 @@ public partial class SfxsPage : UserControl
                 
             EditedItemTemplate.OnPropertyChanged(nameof(EditedItemTemplate.Icon));
 
-            if (btn.Parent!.Parent!.Parent!.Parent! is Popup popup)
+            if (btn.Parent!.Parent!.Parent!.Parent is Popup popup)
             {
                 popup.IsOpen = false;
             }
@@ -241,7 +241,7 @@ public partial class SfxsPage : UserControl
         {
             var file = files[0];
             var path = file.Path.LocalPath;
-            EditedItemTemplate.sound = path;
+            EditedItemTemplate!.sound = path;
             EditedItemTemplate.OnPropertyChanged(nameof(EditedItemTemplate.sound));
         }
     }

@@ -2,7 +2,7 @@ use std::{
     ffi::{CStr, CString, c_char}, fs, sync::atomic::{AtomicBool, Ordering}, thread
 };
 
-use crate::files::{self, Channel, DeviceOrApp};
+use crate::{critical, error, files::{self, Channel, DeviceOrApp}, log};
 
 #[link(name = "audio")]
 unsafe extern "C" {
@@ -26,7 +26,7 @@ fn get_blocks(channel_name: String) -> String {
         match fs::read_to_string(path) {
             Ok(content) => {json_str = content;},
             Err(e) => {
-                eprintln!("Failed to read blocks file for item \"{}\": {:#?}", channel_name, e);
+                error!("Failed to read blocks file for item \"{}\": {:#?}", channel_name, e);
             }
         };
     }
@@ -34,7 +34,7 @@ fn get_blocks(channel_name: String) -> String {
     let json: serde_json::Value = match serde_json::from_str::<serde_json::Value>(&json_str) {
         Ok(p) => p,
         Err(e) => {
-            eprintln!("Failed to parse blocks file: {}", e);
+            error!("Failed to parse blocks file: {}", e);
             serde_json::json!([])
         }
     };
@@ -185,8 +185,7 @@ pub(crate) fn get_volume_parsed(name: String) -> String {
 
 pub(crate) fn start() {
     if unsafe {stop_audio.load(Ordering::SeqCst) == false} {
-        println!("Audio threads already running");
-        println!("Please restart audio threads instead.");
+        log!("Audio threads already running");
         return;
     }
 
@@ -197,7 +196,7 @@ pub(crate) fn start() {
     let channels: Vec<Channel> = files::get_channels();
 
     if channels.is_empty() {
-        println!("No threads to create");
+        log!("No threads to create");
         return;
     }
 
@@ -220,18 +219,20 @@ pub(crate) fn start() {
                     manage_app(channel.device, files::get_settings().output, channel.lowlatency, channel.name);
                 }
             }) {
-            eprintln!("Failed to spawn audio thread \"{}\": {}", thread_name, e);
+
+            critical!("Failed to spawn audio thread \"{}\": {}", thread_name, e);
+            log::write_crashlog();
         }
     }
 
-    println!("Created audio threads");
+    log!("Created audio threads");
 }
 
 pub(crate) fn restart() {
     thread::Builder::new()
         .name("audio_restart".to_string())
         .spawn(|| {
-            println!("Restarting audio threads");
+            log!("Restarting audio threads");
 
             unsafe {
                 reset_volume();

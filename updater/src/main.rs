@@ -54,19 +54,6 @@ fn presskeytoquit() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn delete_folder(dir: String) -> Result<(), Box<dyn std::error::Error>> {
-    let status = Command::new("cmd")
-        .args(["/C", "rmdir", "/S", "/Q", &dir])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()?;
-
-    if !status.success() {
-        return Err(format!("Failed to delete folder {}", dir).into());
-    }
-
-    Ok(())
-}
 fn delete_file(path: String) -> Result<(), Box<dyn std::error::Error>> {
     let file_path = Path::new(&path);
     if !file_path.exists() {
@@ -77,10 +64,12 @@ fn delete_file(path: String) -> Result<(), Box<dyn std::error::Error>> {
     }
     return Ok(fs::remove_file(file_path)?);
 }
+
 fn is_executable(path: &Path) -> bool {
     path.extension()
         .map_or(false, |ext| ext.eq_ignore_ascii_case("exe"))
 }
+
 fn close_vice(path: String) -> Result<(), Box<dyn std::error::Error>> {
     let process_name = Path::new(&path)
         .file_name()
@@ -110,6 +99,7 @@ fn close_vice(path: String) -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
 fn schedule_delete(path: &str) {
     let c_path = CString::new(path).unwrap();
     unsafe {
@@ -120,35 +110,8 @@ fn schedule_delete(path: &str) {
         );
     }
 }
-fn fix_permissions(path: &str) {
-    let _ = Command::new("cmd")
-        .args(["/C", "takeown", "/F", path, "/R", "/D", "Y"])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn();
 
-    let _ = Command::new("cmd")
-        .args(["/C", "icacls", path, "/grant", "Administrators:F", "/T", "/C"])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn();
-}
-fn kill_webview2_processes() {
-    let processes = [
-        "msedgewebview2.exe",
-        "WebView2.exe",
-        "WebView2Runtime.exe",
-    ];
-
-    for p in processes {
-        let _ = Command::new("taskkill")
-            .args(["/F", "/IM", p])
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn();
-    }
-}
-fn install_update(old_path: String, debug: String) -> Result<(), Box<dyn std::error::Error>> {
+fn install_update(old_path: String) -> Result<(), Box<dyn std::error::Error>> {
     print!("\rPreparing to download...");
     let client = Client::new();
     let release: Release = client
@@ -184,8 +147,6 @@ fn install_update(old_path: String, debug: String) -> Result<(), Box<dyn std::er
     }
     fs::create_dir_all(extract_dir)?;
 
-    let expected_name = if debug == "false" { "Vice.exe" } else { "Vice-debug.exe" };
-
     let mut found = false;
 
     for i in 0..archive.len() {
@@ -195,7 +156,7 @@ fn install_update(old_path: String, debug: String) -> Result<(), Box<dyn std::er
             .and_then(|n| n.to_str())
             .unwrap_or("");
 
-        if name == expected_name {
+        if name == "Vice.exe" {
             let mut outfile = File::create(&extract_dir.join(name))?;
             std::io::copy(&mut file, &mut outfile)?;
             found = true;
@@ -204,13 +165,13 @@ fn install_update(old_path: String, debug: String) -> Result<(), Box<dyn std::er
     }
 
     if !found {
-        print!("\rBinary '{}' not found in archive.           ", expected_name);
+        print!("\rBinary 'Vice.exe' not found in archive.           ");
         fs::remove_file(tmp_zip)?;
         fs::remove_dir_all(extract_dir)?;
         return Err("None".into());
     }
 
-    let new_binary = extract_dir.join(expected_name);
+    let new_binary = extract_dir.join("Vice.exe");
     fs::copy(&new_binary, &old_path)?;
     fs::remove_file(tmp_zip)?;
     fs::remove_dir_all(extract_dir)?;
@@ -258,6 +219,8 @@ fn update(old_path: String, debug: String) -> Result<(), Box<dyn std::error::Err
 
     stdout().flush()?;
 
+    let mut errored = false;
+
     //Close Vice if running
     stdout().flush()?;
     print!("Closing Vice...");
@@ -265,44 +228,33 @@ fn update(old_path: String, debug: String) -> Result<(), Box<dyn std::error::Err
     let _ = close_vice(old_path.clone());
 
     print!("\rClosed Vice...         ");
+    println!();
     stdout().flush()?;
-    println!();
-    println!();
 
-    let mut errored = false;
+    //Vice deletion
+    print!("Deleting Application...");
 
-    //cache deletion
-    stdout().flush()?;
-    println!();
-
-    print!("Deleting WebView data...");
-
-    let path_cache = std::env::var("APPDATA").unwrap_or_default() + "\\Vice\\Cache";
-
-    kill_webview2_processes();
-    thread::sleep(Duration::from_millis(500));
-    fix_permissions(&path_cache.clone());
-    let res_com = delete_folder(path_cache.clone());
-
-    match res_com {
+    let res_app = delete_file(old_path.clone());
+    match res_app {
         Ok(_) => {
-            print!("\rDeleted WebView data...     ");
+            print!("\rDeleted Application.      ");
         }
         Err(e) => {
             if e.to_string().contains("Directory does not exist") {
-                print!("\rDirectory \"{}\" does not exist. It's been deleted already.", path_cache);
+                print!("\rApplication doesn't exist. This should not happen. If you can reliably reproduce this issue, please report it at https://github.com/GlowyDeveloper/Vice/issues");
+                errored = true;
             } else {
-                print!("\rFailed to delete folder \"{}\": {}", path_cache, e);
+                print!("\rFailed to delete app: {}", e);
                 errored = true;
             }
         }
     }
-    println!();
+
     println!();
     stdout().flush()?;
 
     //Download Update
-    match install_update(old_path.clone(), debug) {
+    match install_update(old_path.clone()) {
         Ok(_) => {
             print!("\rDownloaded Update...        ");
         }
@@ -324,8 +276,10 @@ fn update(old_path: String, debug: String) -> Result<(), Box<dyn std::error::Err
     print!("Opening new version...");
     let escaped = old_path.replace("&", "^&");
 
+    let debug_flag = if debug == "true" { "--debug" } else { "" };
+
     let _ = Command::new("cmd")
-        .args(["/C", "start", "", &escaped])
+        .args(["/C", "start", "", &escaped, debug_flag, "--changelog"])
         .spawn();
 
     print!("\rOpened new version...      ");
@@ -381,6 +335,7 @@ fn uninstall(old_path: String) -> Result<(), Box<dyn std::error::Error>> {
     while event::poll(Duration::from_millis(0))? {
         let _ = event::read()?;
     }
+
     loop {
         if event::poll(Duration::from_millis(0))? {
             if let Event::Key(_) = event::read()? {
@@ -430,7 +385,7 @@ fn uninstall(old_path: String) -> Result<(), Box<dyn std::error::Error>> {
 
     schedule_delete(&path_save.clone());
 
-    print!("\rScheduled Deletion On Reboot...       ");
+    print!("\rScheduled Deletion On Reboot.       ");
     println!();
 
     //Vice deletion
@@ -443,7 +398,7 @@ fn uninstall(old_path: String) -> Result<(), Box<dyn std::error::Error>> {
 
     match res_app {
         Ok(_) => {
-            print!("\rDeleted Application...    ");
+            print!("\rDeleted Application.      ");
         }
         Err(e) => {
             if e.to_string().contains("Directory does not exist") {

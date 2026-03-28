@@ -1,6 +1,7 @@
 ﻿<Grid xmlns="https://github.com/avaloniaui"
             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-            x:Class="Vice.Ui.Controls.IconSelection">
+            x:Class="Vice.Ui.Controls.IconSelection"
+            x:CompileBindings="True">
     <Grid.RowDefinitions>
         <RowDefinition Height="*"/>
         <RowDefinition Height="*"/>

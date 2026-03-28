@@ -640,6 +640,8 @@ pub fn run() {
     });
 }*/
 
+use std::ffi::{CStr, c_char};
+
 use single_instance::SingleInstance;
 
 mod files;
@@ -647,8 +649,32 @@ mod audio;
 mod performance;
 mod ui;
 mod funcs;
+mod log;
+
+#[no_mangle]
+pub extern "C" fn error(info: *const c_char) {
+    unsafe {
+        let string = CStr::from_ptr(info).to_string_lossy().into_owned();
+        error!("{}", string);
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn warn(info: *const c_char) {
+    unsafe {
+        let string = CStr::from_ptr(info).to_string_lossy().into_owned();
+        warn!("{}", string);
+    }
+}
 
 pub fn run() {
+    std::env::set_var("RUST_BACKTRACE", "1");
+
+    std::panic::set_hook(Box::new(|panic_info| {
+        critical!("{}", panic_info);
+        log::write_crashlog();
+    }));
+
     let instance = SingleInstance::new("ViceSingleInstance").expect("Failed to create single instance");
     if !instance.is_single() {
         ui::call_instance();

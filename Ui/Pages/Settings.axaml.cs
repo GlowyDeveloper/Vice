@@ -12,17 +12,17 @@ namespace Vice.Ui.Pages;
 
 public partial class SettingsPage : UserControl, INotifyPropertyChanged
 {
-    private InvokeRequest _invokeRequest;
-    public SettingsClass _settings { get; set; }
+    private InvokeRequest? _invokeRequest;
+    public SettingsClass? _settings { get; set; }
     private event EventHandler<SettingsClass>? ReloadWindowSettings;
 
-    public event PropertyChangedEventHandler? PropertyChanged;
+    public new event PropertyChangedEventHandler? PropertyChanged;
     private void OnPropertyChanged([CallerMemberName] string? propname = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propname));
     
     public ObservableCollection<string> OutputDeviceList { get; set; } = new();
     
-    public string version { get; set; }
+    public string? version { get; set; }
 
     public SettingsPage()
     {
@@ -47,10 +47,10 @@ public partial class SettingsPage : UserControl, INotifyPropertyChanged
         
         try
         {
-            var result = await _invokeRequest.SendRequestAsync("get_outputs");
+            var result = await _invokeRequest!.SendRequestAsync("get_outputs");
             var parsed = JsonSerializer.Deserialize(result, JsonContext.Default.ListString);
             
-            foreach (var item in parsed)
+            foreach (var item in parsed!)
             {
                 OutputDeviceList.Add(item);
             }
@@ -68,7 +68,7 @@ public partial class SettingsPage : UserControl, INotifyPropertyChanged
     {
         try
         {
-            var v = await _invokeRequest.SendRequestAsync("get_version");
+            var v = await _invokeRequest!.SendRequestAsync("get_version");
             version = v.Replace("\"", "");
         }
         catch (Exception ex)
@@ -84,8 +84,8 @@ public partial class SettingsPage : UserControl, INotifyPropertyChanged
     {
         try
         {
-            await _invokeRequest.SendRequestAsync("save_settings", _settings, false);
-            ReloadWindowSettings.Invoke(null, _settings);
+            await _invokeRequest!.SendRequestAsync("save_settings", _settings, false);
+            ReloadWindowSettings!.Invoke(null, _settings!);
         }
         catch (Exception ex)
         {
@@ -97,14 +97,14 @@ public partial class SettingsPage : UserControl, INotifyPropertyChanged
     {
         if (sender is MenuItem btn && btn.DataContext is string option)
         {
-            _settings.output = option;
+            _settings!.output = option;
             OutputDevice.Content = option;
         }
     }
 
     private async void OpenGithub(object sender, RoutedEventArgs e)
     {
-        await _invokeRequest.SendRequestAsync(
+        await _invokeRequest!.SendRequestAsync(
             "open_link",
             new Dictionary<string, object> { { "url", "https://github.com/GlowyDeveloper/Vice" } },
             false

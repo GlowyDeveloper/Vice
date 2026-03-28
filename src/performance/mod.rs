@@ -7,7 +7,7 @@ use std::{
 use once_cell::sync::Lazy;
 use serde::Serialize;
 
-use crate::files;
+use crate::{critical, files, log};
 
 #[derive(Default, Clone, Serialize, Debug)]
 pub(crate) struct Data {
@@ -29,7 +29,7 @@ static RUN_MONITOR: AtomicBool = AtomicBool::new(true);
 static PERFORMANCE: Lazy<Mutex<Data>> = Lazy::new(|| Mutex::new(Data::default()));
 
 fn run_loop() {
-    println!("Starting performance monitor loop");
+    log!("Starting performance monitor loop");
     loop {
         if !RUN_MONITOR.load(Ordering::SeqCst) {
             break;
@@ -81,7 +81,9 @@ pub(crate) fn start() {
         if let Err(e) = thread::Builder::new()
             .name("performence-monitor".to_string())
             .spawn(|| run_loop()) {
-            eprintln!("Failed to spawn performence monitor thread: {}", e);
+            critical!("Failed to spawn performence monitor thread: {}", e);
+            log::write_crashlog();
+            std::process::exit(1);
         }
     }
 }

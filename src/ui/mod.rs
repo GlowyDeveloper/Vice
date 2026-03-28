@@ -5,12 +5,12 @@ use interprocess::{TryClone as _, local_socket::{GenericNamespaced, ListenerOpti
 use device_query::{DeviceQuery as _, DeviceState};
 use serde_json::{json};
 
-use crate::{files::{self, DeviceOrApp}, funcs};
+use crate::{critical, error, log, files::{self, DeviceOrApp}, funcs};
 
 #[link(name = "performance")]
 extern "C" {
-    fn hollow_process(payload: *const u8) -> i32;
-    fn run_in_job(payload: *const u8, payload_size: usize);
+    fn hollow_process(payload: *const u8, changelog: bool) -> bool;
+    fn run_in_job(payload: *const u8, payload_size: usize, changelog: bool);
 }
 
 const EMBEDDED_UI: &[u8] = include_bytes!("../../Ui/bin/Release/net10.0/win-x64/publish/Vice.Ui.exe");
@@ -266,12 +266,13 @@ fn handle_request(cmd: &str, args: serde_json::Value) -> serde_json::Value {
 
         return json!({"result": final_keys});
     } else if cmd == "reopen_ui" {
-        println!("Reopening UI");
+        log!("Reopening UI");
 
         run_ui();
     } else if cmd == "quit" {
         let settings = files::get_settings();
         if settings.tray == false {
+            log::write_debuglog();
             std::process::exit(0);
         }
     }
@@ -287,9 +288,9 @@ pub(crate) fn call_instance() {
         stream.write(request.to_string().as_bytes()).unwrap();
         stream.write(b"\n").unwrap();
         stream.flush().unwrap();
-        println!("Sent reopen command to instance");
+        log!("Sent reopen command to instance");
     } else {
-        eprintln!("Failed to connect to instance");
+        error!("Failed to connect to instance");
     }
 }
 
@@ -301,7 +302,7 @@ fn handle_client(mut stream: LocalSocketStream) -> std::io::Result<()> {
         buffer_bytes.clear();
         let n = reader.read_until(b'\n', &mut buffer_bytes)?;
         if n == 0 {
-            println!("Client disconnected");
+            log!("Client disconnected");
             break;
         }
 
@@ -312,7 +313,7 @@ fn handle_client(mut stream: LocalSocketStream) -> std::io::Result<()> {
 
         let value: serde_json::Value = match serde_json::from_str(buffer_trimmed) {
             Ok(v) => v,
-            Err(e) => { eprintln!("Invalid JSON: {}", e); continue; }
+            Err(e) => { error!("Invalid JSON: {}", e); continue; }
         };
 
         if let Some(cmd) = value.get("cmd").and_then(|v| v.as_str()) {
@@ -341,33 +342,39 @@ pub(crate) fn run_ipc() {
         .create_sync()
         .unwrap();
 
-    println!("Listening for connections…");
+    log!("Listening for connections…");
 
-    std::thread::Builder::new()
+    if let Err(e) = std::thread::Builder::new()
         .name("IPC Listener".into())
         .spawn(move || {
             for connection in listener.incoming() {
                 match connection {
                     Ok(stream) => {
-                        println!("Client connected");
+                        log!("Client connected");
 
                         std::thread::spawn(move || {
                             if let Err(e) = handle_client(stream) {
-                                eprintln!("Client error: {}", e);
+                                error!("Client error: {}", e);
                             }
                         });
                     }
-                    Err(e) => eprintln!("Failed to accept connection: {}", e),
+                    Err(e) => error!("Failed to accept connection: {}", e),
                 }
             }
-        })
-        .expect("Failed to spawn IPC listener thread");
+        }) {
+        critical!("Failed to spawn IPC listener thread: {}", e);
+        log::write_crashlog();
+    }
 }
 
 pub(crate) fn run_ui() {
+    let args: Vec<String> = std::env::args().collect();
+    let changelog = args.contains(&"--changelog".to_string());
     unsafe {
-        if hollow_process(EMBEDDED_UI.as_ptr()) == -1 {
-            run_in_job(EMBEDDED_UI.as_ptr(), EMBEDDED_UI.len());
+        log!("Opening UI with hollowing");
+        if !hollow_process(EMBEDDED_UI.as_ptr(), changelog) {
+            log!("Resorting with no hollowing");
+            run_in_job(EMBEDDED_UI.as_ptr(), EMBEDDED_UI.len(), changelog);
         }
     }
 }

@@ -14,6 +14,8 @@ use windows::{
     },
 };
 
+use crate::{error, log, warn};
+
 #[derive(Debug, Deserialize, Serialize, PartialEq, Default)]
 pub(crate) struct SoundboardSFX {
     pub(crate) name: String,
@@ -84,7 +86,7 @@ pub(crate) fn app_base() -> PathBuf {
     match base {
         Ok(s) => return PathBuf::from(s).join("Vice"),
         Err(e) => {
-            eprintln!("Error occured when getting App Base: {:#?}", e);
+            error!("Error occured when getting App Base: {:#?}", e);
             return env::temp_dir().join("Vice");
         }
     }
@@ -98,6 +100,10 @@ pub(crate) fn blocks_base() -> PathBuf {
     app_base().join("Blocks")
 }
 
+pub(crate) fn crash_log_base() -> PathBuf {
+    app_base().join("CrashLogs")
+}
+
 fn settings_json() -> PathBuf {
     app_base().join("settings.json")
 }
@@ -107,7 +113,7 @@ pub(crate) fn create_files() {
 
     if !base.exists() {
         if let Err(e) = fs::create_dir_all(base) {
-            eprintln!("Failed to create app base: {}", e);
+            error!("Failed to create app base: {}", e);
         }
     }
 
@@ -120,11 +126,11 @@ pub(crate) fn create_files() {
         match serde_json::to_string_pretty(&default_file) {
             Ok(json) => {
                 if let Err(e) = fs::write(&file_path, json) {
-                    eprintln!("Failed to create settings: {}", e);
+                    error!("Failed to create settings: {}", e);
                 }
             }
             Err(e) => {
-                eprintln!("Failed to serialize default settings: {}", e);
+                error!("Failed to serialize default settings: {}", e);
             }
         }
     }
@@ -133,7 +139,7 @@ pub(crate) fn create_files() {
 
     if !sfxs_path.exists() {
         if let Err(e) = fs::create_dir_all(sfxs_path) {
-            eprintln!("Failed to create soundeffect directory: {}", e);
+            error!("Failed to create soundeffect directory: {}", e);
         }
     }
 
@@ -141,7 +147,15 @@ pub(crate) fn create_files() {
 
     if !blocks_path.exists() {
         if let Err(e) = fs::create_dir_all(blocks_path) {
-            eprintln!("Failed to create blocks directory: {}", e);
+            error!("Failed to create blocks directory: {}", e);
+        }
+    }
+
+    let crash_log_path: PathBuf = crash_log_base();
+
+    if !crash_log_path.exists() {
+        if let Err(e) = fs::create_dir_all(crash_log_path) {
+            error!("Failed to create crash log directory: {}", e);
         }
     }
 
@@ -334,7 +348,7 @@ pub(crate) fn get_file() -> File {
         let data = match fs::read_to_string(path) {
             Ok(d) => d,
             Err(e) => {
-                eprintln!("Failed to read settings file: {}", e);
+                error!("Failed to read settings file: {}", e);
                 return File::default();
             }
         };
@@ -346,14 +360,13 @@ pub(crate) fn get_file() -> File {
         match serde_json::from_str::<File>(&data) {
             Ok(file) => return file,
             Err(e) => {
-                eprintln!("Failed to parse settings file: {}", e);
-                println!("Attempting to fix...");
+                warn!("Failed to parse settings file: {}. Fixing...", e);
 
                 match serde_json::from_str::<Value>(&data) {
                     Ok(value) => {
                         let fixed: File = fix_file(value);
 
-                        println!("Successfully fixed!");
+                        log!("Successfully fixed!");
 
                         let _ = save_file(&fixed);
                         return fixed;
@@ -361,7 +374,7 @@ pub(crate) fn get_file() -> File {
                     Err(e) => {
                         let fixed: File = File::default();
 
-                        println!("Failed to fix the settings file: {}", e);
+                        error!("Failed to fix the settings file: {}", e);
 
                         let _ = save_file(&fixed);
                         return fixed;
@@ -380,15 +393,15 @@ pub(crate) fn save_file(file: &File) -> Result<(), String> {
     let data: String = match serde_json::to_string_pretty(file) {
         Ok(d) => d,
         Err(e) => {
-            eprintln!("Failed to serialize settings: {}", e);
-            return Err("Serilization".to_string());
+            error!("Failed to serialize settings: {}", e);
+            return Err("Serialization".to_string());
         }
     };
 
     match fs::write(&path, data) {
         Ok(_) => Ok(()),
         Err(e) => {
-            eprintln!("Failed to write settings file: {}", e);
+            error!("Failed to write settings file: {}", e);
             return Err("Saving".to_string());
         }
     }
@@ -434,15 +447,6 @@ pub(crate) fn extract_updater(arg: &str, path: PathBuf, debug: &str) -> Result<S
     let mut file = fs::File::create(&temp_path).unwrap();
     let _ = file.write_all(EMBEDDED_UPDATER);
 
-    #[cfg(unix)]
-    {
-        let perms = fs::metadata(&temp_path)
-            .map_err(|e| e.to_string())?
-            .permissions();
-
-        fs::set_permissions(&temp_path, perms).map_err(|e| e.to_string())?;
-    }
-
     let _ = Command::new("cmd")
         .args(["/C", "start", "", &temp_path.to_string_lossy().to_string(), arg, &path.to_string_lossy().to_string(), debug])
         .spawn();
@@ -462,8 +466,6 @@ pub(crate) fn manage_startup() {
             return;
         }
 
-        println!("Creating startup shortcut");
-
         let app = std::env::current_exe().unwrap().to_string_lossy().to_string();
 
         unsafe {
@@ -478,7 +480,7 @@ pub(crate) fn manage_startup() {
                 Ok(i) => {i},
                 Err(e) => {
                     CoUninitialize();
-                    eprintln!("Failed to create startup shortcut: {}", e);
+                    error!("Failed to create startup shortcut: {}", e);
                     return;
                 }
             };
@@ -497,7 +499,7 @@ pub(crate) fn manage_startup() {
                 Ok(i) => {i},
                 Err(e) => {
                     CoUninitialize();
-                    eprintln!("Failed to create startup shortcut: {}", e);
+                    error!("Failed to create startup shortcut: {}", e);
                     return;
                 }
             };
@@ -508,10 +510,10 @@ pub(crate) fn manage_startup() {
 
             match save {
                 Ok(_) => {
-                    println!("Successfully create startup shortcut.")
+                    log!("Successfully created startup shortcut");
                 },
                 Err(e) => {
-                    eprintln!("Failed to create startup shortcut: {}", e);
+                    error!("Failed to create startup shortcut: {}", e);
                 }
             }
 
@@ -525,7 +527,7 @@ pub(crate) fn manage_startup() {
         match fs::remove_file(&lnk_path) {
             Ok(_) => {}
             Err(e) => {
-                eprintln!("Failed to delete startup shortcut: {}", e);
+                error!("Failed to delete startup shortcut: {}", e);
             }
         }
     }

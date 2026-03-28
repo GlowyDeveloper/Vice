@@ -3,27 +3,69 @@
 #include <fstream>
 #include <iostream>
 #include <vector>
+#include <TlHelp32.h>
 
 extern "C" {
-    int hollow_process(const unsigned char* payload) {
+    void error(const char* info);
+    void warn(const char* info);
+}
+
+BOOL open_process_in_job(char cmd[MAX_PATH], STARTUPINFOA* si, PROCESS_INFORMATION* pi, int options) {
+    HANDLE job = CreateJobObjectA(NULL, NULL);
+    if (!job) return FALSE;
+
+    JOBOBJECT_EXTENDED_LIMIT_INFORMATION info = {};
+    info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+    SetInformationJobObject(job, JobObjectExtendedLimitInformation, &info, sizeof(info));
+
+    if (!CreateProcessA(NULL, cmd, NULL, NULL, TRUE, options, NULL, NULL, si, pi)) {
+        CloseHandle(job);
+        std::string msg = "Failed to spawn process";
+        error(msg.c_str());
+        return FALSE;
+    }
+
+    if (!AssignProcessToJobObject(job, pi->hProcess)) {
+        TerminateProcess(pi->hProcess, 0);
+        CloseHandle(pi->hProcess);
+        CloseHandle(pi->hThread);
+        CloseHandle(job);
+        std::string msg = "Failed to assign process a job object";
+        error(msg.c_str());
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+extern "C" {
+    bool hollow_process(const unsigned char* payload, bool changelog) {
         STARTUPINFOA si = { sizeof(si) };
         PROCESS_INFORMATION pi = { 0 };
         char szPath[MAX_PATH];
         GetModuleFileNameA(NULL, szPath, MAX_PATH);
 
-        if (!CreateProcessA(NULL, szPath, NULL, NULL, FALSE, CREATE_SUSPENDED, NULL, NULL, &si, &pi)) {
-            std::cerr << "Failed to spawn process\n";
-            return -1;
+        std::string command = szPath;
+        if (changelog) {
+            command += " --changelog";
+        }
+
+        if (!open_process_in_job((char*)command.c_str(), &si, &pi, CREATE_SUSPENDED)) {
+            return false;
         }
 
         PIMAGE_DOS_HEADER dosHeader = (PIMAGE_DOS_HEADER)payload;
         PIMAGE_NT_HEADERS64 ntHeaders = (PIMAGE_NT_HEADERS64)(payload + dosHeader->e_lfanew);
         
         LPVOID remoteMem = VirtualAllocEx(pi.hProcess, (LPVOID)ntHeaders->OptionalHeader.ImageBase, ntHeaders->OptionalHeader.SizeOfImage, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
-        
+
         if (!remoteMem) {
             TerminateProcess(pi.hProcess, 0);
-            std::cerr << "Failed to alloc memory\n";
+            CloseHandle(pi.hProcess);
+            CloseHandle(pi.hThread);
+            std::string msg = "Failed to alloc memory";
+            error(msg.c_str());
+            
             return -1;
         }
 
@@ -53,10 +95,10 @@ extern "C" {
         CloseHandle(pi.hProcess);
         CloseHandle(pi.hThread);
 
-        return 0;
+        return true;
     }
 
-    void run_in_job(const unsigned char* payload, size_t payload_size) {
+    void run_in_job(const unsigned char* payload, size_t payload_size, bool changelog) {
         char tempPath[MAX_PATH];
         GetTempPathA(MAX_PATH, tempPath);
 
@@ -66,19 +108,7 @@ extern "C" {
         file.write(reinterpret_cast<const char*>(payload), payload_size);
         file.close();
 
-        HANDLE job = CreateJobObjectW(NULL, NULL);
-
-        JOBOBJECT_EXTENDED_LIMIT_INFORMATION info;
-        info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
-
-        SetInformationJobObject(
-            job,
-            JobObjectExtendedLimitInformation,
-            &info,
-            sizeof(JOBOBJECT_EXTENDED_LIMIT_INFORMATION)
-        );
-
-        STARTUPINFOW si = { sizeof(si) };
+        STARTUPINFOA si = { sizeof(si) };
         PROCESS_INFORMATION pi = { 0 };
 
         si.dwFlags |= STARTF_USESTDHANDLES;
@@ -86,16 +116,13 @@ extern "C" {
         si.hStdError = GetStdHandle(STD_ERROR_HANDLE);
         si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
 
-        std::wstring exePathW(exePath.begin(), exePath.end());
-        std::vector<wchar_t> cmd(exePathW.begin(), exePathW.end());
-        cmd.push_back(L'\0');
-
-        if (!CreateProcessW(NULL, cmd.data(), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
-            std::cerr << "Failed to spawn process\n";
-            return;
+        if (changelog) {
+            exePath += " --changelog";
         }
 
-        AssignProcessToJobObject(job, pi.hProcess);
+        if (!open_process_in_job((char*)exePath.c_str(), &si, &pi, 0)) {
+            return;
+        }
 
         CloseHandle(pi.hProcess);
         CloseHandle(pi.hThread);

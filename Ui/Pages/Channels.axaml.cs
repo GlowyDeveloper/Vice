@@ -15,7 +15,7 @@ namespace Vice.Ui.Pages;
 
 public partial class ChannelsPage : UserControl
 {
-    private InvokeRequest _invokeRequest;
+    private InvokeRequest? _invokeRequest;
     
     public static readonly StyledProperty<bool> IsLoadedProperty =
         AvaloniaProperty.Register<ChannelsPage, bool>(nameof(IsLoaded), false);
@@ -30,7 +30,7 @@ public partial class ChannelsPage : UserControl
 
     public ObservableCollection<string> DeviceAndAppList { get; set; } = new();
 
-    public bool IsLoaded
+    public new bool IsLoaded
     {
         get => GetValue(IsLoadedProperty);
         set => SetValue(IsLoadedProperty, value);
@@ -101,10 +101,10 @@ public partial class ChannelsPage : UserControl
 
         try
         {
-            var result = await _invokeRequest.SendRequestAsync("get_channels");
+            var result = await _invokeRequest!.SendRequestAsync("get_channels");
             var parsed = JsonSerializer.Deserialize(result, JsonContext.Default.ListChannelsClass);
 
-            foreach (var item in parsed)
+            foreach (var item in parsed!)
             {
                 var itemTemplate = new ChannelItemTemplate(
                     item.name,
@@ -134,14 +134,14 @@ public partial class ChannelsPage : UserControl
     {
         DeviceAndAppList.Clear();
         
-        if (EditedItemTemplate.deviceOrApp == DeviceOrApp.App)
+        if (EditedItemTemplate!.deviceOrApp == DeviceOrApp.App)
         {
             try
             {
-                var result = await _invokeRequest.SendRequestAsync("get_apps");
+                var result = await _invokeRequest!.SendRequestAsync("get_apps");
                 var parsed = JsonSerializer.Deserialize(result, JsonContext.Default.ListString);
                 
-                foreach (var item in parsed)
+                foreach (var item in parsed!)
                 {
                     DeviceAndAppList.Add(item);
                 }
@@ -156,10 +156,10 @@ public partial class ChannelsPage : UserControl
         {
             try
             {
-                var result = await _invokeRequest.SendRequestAsync("get_devices");
+                var result = await _invokeRequest!.SendRequestAsync("get_devices");
                 var parsed = JsonSerializer.Deserialize(result, JsonContext.Default.ListString);
                 
-                foreach (var item in parsed)
+                foreach (var item in parsed!)
                 {
                     DeviceAndAppList.Add(item);
                 }
@@ -175,9 +175,9 @@ public partial class ChannelsPage : UserControl
     
     private async void DeleteItem(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        if (sender is MenuItem btn && btn.Parent.Parent.Parent.Parent.Parent is Border border)
+        if (sender is MenuItem btn && btn.Parent!.Parent!.Parent!.Parent!.Parent is Border border)
         {
-            await _invokeRequest.SendRequestAsync(
+            await _invokeRequest!.SendRequestAsync(
                 "delete_channel",
                 new Dictionary<string, object> { { "name", (border.Tag as string)! } },
                 false
@@ -224,9 +224,9 @@ public partial class ChannelsPage : UserControl
     
     private async void SliderChanged(object? sender, RangeBaseValueChangedEventArgs e)
     {
-        if (sender is Slider slider && slider.Parent.Parent is Border border)
+        if (sender is Slider slider && slider.Parent!.Parent is Border border)
         {
-            await _invokeRequest.SendRequestAsync(
+            await _invokeRequest!.SendRequestAsync(
                 "set_volume",
                 new Dictionary<string, object> { { "name", (border.Tag as string)! }, { "volume", slider.Value } },
                 false
@@ -243,13 +243,13 @@ public partial class ChannelsPage : UserControl
     private async void SaveButtonClick(object? sender, RoutedEventArgs e)
     {
         List<byte> parsedColor = new List<byte>();
-        parsedColor.Add(EditedItemTemplate.Color.R);
+        parsedColor.Add(EditedItemTemplate!.Color.R);
         parsedColor.Add(EditedItemTemplate.Color.G);
         parsedColor.Add(EditedItemTemplate.Color.B);
 
         if (EditedItemTemplate.CreatingNew)
         {
-            await _invokeRequest.SendRequestAsync(
+            await _invokeRequest!.SendRequestAsync(
                 "new_channel",
                 new Dictionary<string, object> { { "name", EditedItemTemplate.name }, { "icon", EditedItemTemplate.icon },  { "color", parsedColor }, { "deviceapps", EditedItemTemplate.device }, { "device", EditedItemTemplate.deviceOrApp.ToString() }, { "low", EditedItemTemplate.lowlatency } },
                 false
@@ -257,7 +257,7 @@ public partial class ChannelsPage : UserControl
         }
         else
         {
-            await _invokeRequest.SendRequestAsync(
+            await _invokeRequest!.SendRequestAsync(
                 "edit_channel",
                 new Dictionary<string, object> { { "name", EditedItemTemplate.name }, { "icon", EditedItemTemplate.icon },  { "color", parsedColor }, { "deviceapps", EditedItemTemplate.device }, { "device", EditedItemTemplate.deviceOrApp.ToString() }, { "low", EditedItemTemplate.lowlatency }, { "oldname", EditedItemTemplate.OldName } },
                 false
@@ -320,7 +320,7 @@ public partial class ChannelsPage : UserControl
                 
             EditedItemTemplate.OnPropertyChanged(nameof(EditedItemTemplate.Icon));
 
-            if (btn.Parent!.Parent!.Parent!.Parent! is Popup popup)
+            if (btn.Parent!.Parent!.Parent!.Parent is Popup popup)
             {
                 popup.IsOpen = false;
             }

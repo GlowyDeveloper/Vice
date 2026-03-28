@@ -19,13 +19,13 @@
             <ExperimentalAcrylicBorder.Material>
                 <ExperimentalAcrylicMaterial BackgroundSource="Digger"
                                              TintColor="{Binding Color}"
-                                             TintOpacity="0.8"
+                                             TintOpacity="0.7"
                                              MaterialOpacity="0.65"/>
             </ExperimentalAcrylicBorder.Material>
         </ExperimentalAcrylicBorder>
 
-            <Grid RenderTransformOrigin="0,0"
-                  RowDefinitions="36,*">
+        <Grid RenderTransformOrigin="0,0"
+              RowDefinitions="36,*">
             
             <Panel Grid.Row="0" Grid.ColumnSpan="1" Margin="8">
                 <Image Source="/Assets/icon.ico"
@@ -63,7 +63,7 @@
                             <ExperimentalAcrylicBorder.Material>
                                 <ExperimentalAcrylicMaterial BackgroundSource="Digger"
                                                              TintColor="{Binding Color}"
-                                                             TintOpacity="0.8"
+                                                             TintOpacity="0.9"
                                                              MaterialOpacity="0.65"/>
                             </ExperimentalAcrylicBorder.Material>
                         </ExperimentalAcrylicBorder>
@@ -91,7 +91,7 @@
                                     <ExperimentalAcrylicBorder.Material>
                                         <ExperimentalAcrylicMaterial BackgroundSource="Digger"
                                                                      TintColor="{Binding Color}"
-                                                                     TintOpacity="0.8"
+                                                                     TintOpacity="0.7"
                                                                      MaterialOpacity="0.65"/>
                                     </ExperimentalAcrylicBorder.Material>
                                 </ExperimentalAcrylicBorder>

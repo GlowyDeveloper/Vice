@@ -1,7 +1,8 @@
 ﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:Vice.Ui.Controls"
-             x:Class="Vice.Ui.Controls.SidebarItem">
+             x:Class="Vice.Ui.Controls.SidebarItem"
+             x:CompileBindings="True">
 
     <Border x:Name="Root" CornerRadius="6" Padding="10" Background="Transparent">
         <StackPanel Orientation="Horizontal" Spacing="8">

@@ -14,10 +14,10 @@ namespace Vice.Ui;
 
 public partial class MainWindow : Window, INotifyPropertyChanged
 {
-    private InvokeRequest _invokeRequest;
-    private SettingsClass _settings;
+    private InvokeRequest? _invokeRequest;
+    private SettingsClass? _settings;
     
-    public event PropertyChangedEventHandler? PropertyChanged;
+    public new event PropertyChangedEventHandler? PropertyChanged;
     private void OnPropertyChanged([CallerMemberName] string? propname = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propname));
     
@@ -62,7 +62,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     
     private async void OnClosing(object? sender, WindowClosingEventArgs e)
     {
-        await _invokeRequest.SendRequestAsync("quit", null, false);
+        await _invokeRequest!.SendRequestAsync("quit", null, false);
     }
     
     private void TriggerPaneCommand(object? sender, RoutedEventArgs e)
@@ -84,13 +84,13 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         {
             case "ChannelsItem":
                 var channelsPage = new ChannelsPage();
-                channelsPage.Load(_invokeRequest);
+                channelsPage.Load(_invokeRequest!);
 
                 PageHost.Content = channelsPage;
                 break;
             case "SfxsItem":
                 var sfxsPage = new SfxsPage();
-                sfxsPage.Load(_invokeRequest);
+                sfxsPage.Load(_invokeRequest!);
 
                 PageHost.Content = sfxsPage;
                 break;
@@ -102,7 +102,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 break;
             case "SettingsItem":
                 var settingsPage = new SettingsPage();
-                settingsPage.Load(Reload, _settings, _invokeRequest);
+                settingsPage.Load(Reload, _settings!, _invokeRequest!);
                 
                 PageHost.Content = settingsPage;
                 break;
@@ -124,7 +124,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     
     public double Scale
     {
-        get => Math.Clamp(_settings.scale, 0.1, 2.0);
+        get => Math.Clamp(_settings!.scale, 0.1, 2.0);
     }
     
     public Color Color
