@@ -199,7 +199,7 @@
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             
-                            <TextBlock Grid.Column="0" Text="Name" FontSize="18" Foreground="White" Margin="32 0 48 0" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="0" Text="KeyBinds" FontSize="18" Foreground="White" Margin="32 0 48 0" VerticalAlignment="Center"/>
                             
                             <controls:KeybindListener Grid.Column="1"
                                                       Background="#4d4d4d"
@@ -208,7 +208,8 @@
                                                       HorizontalAlignment="Stretch"
                                                       Text="{Binding EditedItemTemplate.KeysText}"
                                                       Height="40"
-                                                      CornerRadius="8"/>
+                                                      CornerRadius="8"
+                                                      x:Name="Keybinds"/>
                         </Grid>
                     </Grid>
                     

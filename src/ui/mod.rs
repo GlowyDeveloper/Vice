@@ -1,21 +1,388 @@
+
 use std::{
-    io::{BufRead as _, BufReader, Write as _}, thread, time::Duration
+    collections::HashMap, io::{Cursor, Read as _, Write as _}, net::{TcpListener, TcpStream}, sync::{Arc, Mutex, atomic::{AtomicBool, Ordering}}
 };
-use interprocess::{TryClone as _, local_socket::{GenericNamespaced, ListenerOptions, prelude::*}};
-use device_query::{DeviceQuery as _, DeviceState};
-use serde_json::{json};
+use global_hotkey::{GlobalHotKeyManager, hotkey::{Code, HotKey, Modifiers}};
+use serde_json::{Value, json};
+use tray_icon::{Icon, TrayIcon, TrayIconBuilder, menu::{Menu, MenuItem}};
 
-use crate::{critical, error, log, files::{self, DeviceOrApp}, funcs};
+use crate::{error, files::{self, DeviceOrApp}, funcs, log, warn};
 
-#[link(name = "performance")]
+#[link(name = "open_ui")]
 extern "C" {
     fn hollow_process(payload: *const u8, changelog: bool) -> bool;
     fn run_in_job(payload: *const u8, payload_size: usize, changelog: bool);
 }
 
 const EMBEDDED_UI: &[u8] = include_bytes!("../../Ui/bin/Release/net10.0/win-x64/publish/Vice.Ui.exe");
+const ICON: &[u8] = include_bytes!("../../icons/icon.ico");
 
-fn handle_request(cmd: &str, args: serde_json::Value) -> serde_json::Value {
+static IS_OPEN: AtomicBool = AtomicBool::new(false);
+
+struct Client {
+    stream: TcpStream,
+    buffer: Vec<u8>,
+}
+
+pub struct IpcServer {
+    listener: TcpListener,
+    clients: Vec<Client>,
+    hotkeys: Arc<Mutex<Hotkeys>>
+}
+
+impl IpcServer {
+    pub fn new(hotkeys: Arc<Mutex<Hotkeys>>) -> Self {
+        let listener = TcpListener::bind("127.0.0.1:8423")
+            .expect("Failed to bind TCP listener");
+
+        listener
+            .set_nonblocking(true)
+            .expect("Failed to set nonblocking");
+
+        log!("IPC initialized");
+
+        Self {
+            listener,
+            clients: Vec::new(),
+            hotkeys,
+        }
+    }
+
+    pub fn create_in_thread(hotkeys: Arc<Mutex<Hotkeys>>) {
+        std::thread::Builder::new()
+            .name("Ipc Server".to_string())
+            .spawn(move || {
+                let mut server = IpcServer::new(hotkeys);
+                loop {
+                    server.poll();
+                    std::thread::sleep(std::time::Duration::from_millis(50));
+                }
+            })
+            .expect("Failed to create IPC thread");
+    }
+
+    pub fn poll(&mut self) {
+        loop {
+            match self.listener.accept() {
+                Ok((stream, _addr)) => {
+                    log!("Client connected");
+
+                    stream
+                        .set_nonblocking(true)
+                        .expect("Failed to set client nonblocking");
+
+                    self.clients.push(Client {
+                        stream,
+                        buffer: Vec::new(),
+                    });
+                }
+                Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                    break;
+                }
+                Err(e) => {
+                    error!("Failed to accept connection: {}", e);
+                    break;
+                }
+            }
+        }
+
+        let mut i = 0;
+        while i < self.clients.len() {
+            let remove = Self::poll_client(&mut self.clients[i], &mut self.hotkeys.lock().unwrap()).is_err();
+
+            if remove {
+                self.clients.swap_remove(i);
+            } else {
+                i += 1;
+            }
+        }
+    }
+
+    fn poll_client(client: &mut Client, hotkeys: &mut Hotkeys) -> std::io::Result<()> {
+        let mut temp = [0u8; 1024];
+
+        match client.stream.read(&mut temp) {
+            Ok(0) => {
+                log!("Client disconnected");
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::ConnectionReset,
+                    "closed",
+                ));
+            }
+            Ok(n) => {
+                client.buffer.extend_from_slice(&temp[..n]);
+            }
+            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                return Ok(());
+            }
+            Err(e) => return Err(e),
+        }
+
+        while let Some(pos) = client.buffer.iter().position(|&b| b == b'\n') {
+            let line: Vec<u8> = client.buffer.drain(..=pos).collect();
+
+            let text = match std::str::from_utf8(&line) {
+                Ok(t) => t.trim(),
+                Err(_) => {
+                    error!("Invalid UTF-8");
+                    continue;
+                }
+            };
+
+            if text.is_empty() {
+                continue;
+            }
+
+            let value: serde_json::Value = match serde_json::from_str(text) {
+                Ok(v) => v,
+                Err(e) => {
+                    error!("Invalid JSON: {}", e);
+                    continue;
+                }
+            };
+
+            if let Some(cmd) = value.get("cmd").and_then(|v| v.as_str()) {
+                if let Some(args) = value.get("args") {
+                    let response = handle_request(cmd, args.clone(), hotkeys);
+
+                    if value.get("respond").and_then(|v| v.as_bool()) == Some(true) {
+                        let formatted = format!("{}\n", response["result"]);
+
+                        if let Err(e) = client.stream.write_all(formatted.as_bytes()) {
+                            error!("Write failed: {}", e);
+                            return Err(e);
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
+
+pub struct SystemTray {
+    _icon: Icon,
+    _tray_menu: Menu,
+    pub(crate) quit: MenuItem,
+    pub(crate) open_ui: MenuItem,
+    pub(crate) restart: MenuItem,
+    _tray: TrayIcon,
+}
+
+impl SystemTray {
+    pub fn new() -> Self {
+        let tray_icon = Self::create_icon().map(|(data, width, height)| Icon::from_rgba(data, width, height).unwrap())
+            .unwrap_or(Icon::from_rgba(vec![0, 0, 0, 0], 1, 1).unwrap());
+
+        let tray_menu = Menu::new();
+        let quit = MenuItem::new("Quit", true, None);
+        let open_ui = MenuItem::new("Open UI", true, None);
+        let restart = MenuItem::new("Restart Audio", true, None);
+        tray_menu.append(&quit).unwrap();
+        tray_menu.append(&open_ui).unwrap();
+        tray_menu.append(&restart).unwrap();
+
+        let _tray = TrayIconBuilder::new()
+            .with_icon(tray_icon.clone())
+            .with_menu(Box::new(tray_menu.clone()))
+            .with_tooltip("Vice")
+            .with_title("Vice")
+            .build()
+            .expect("Failed to build tray icon");
+
+        Self {
+            _icon: tray_icon,
+            _tray_menu: tray_menu,
+            quit: quit,
+            open_ui: open_ui,
+            restart: restart,
+            _tray,
+        }
+    }
+
+    fn create_icon() -> Option<(Vec<u8>, u32, u32)> {
+        let reader = Cursor::new(ICON);
+        let icon_dir = match ico::IconDir::read(reader) {
+            Ok(i) => i,
+            Err(e) => {
+                error!("Error occured when getting ico: {:#?}", e);
+                return None;
+            }
+        };
+
+        let entry = icon_dir
+            .entries()
+            .iter()
+            .max_by_key(|e| e.width());
+            
+        let image = match entry {
+            Some(i) => i,
+            None => {
+                error!("Failed to get an entry in ico");
+                return None;
+            }
+        };
+
+        match image.decode() {
+            Ok(i) => {
+                return Some((i.rgba_data().to_vec(), i.width(), i.height()));
+            }
+            Err(e) => {
+                error!("Failed to decode icon: {:#?}", e);
+                return None;
+            }
+        };
+    }
+}
+
+pub(crate) struct Hotkeys {
+    pub(crate) manager: Option<GlobalHotKeyManager>,
+    pub(crate) hotkeys: HashMap<HotKey, String>
+}
+
+unsafe impl Send for Hotkeys {}
+
+impl Hotkeys {
+    pub fn new() -> Self {
+        Self {
+            manager: Some(GlobalHotKeyManager::new().unwrap()),
+            hotkeys: HashMap::new()
+        }
+    }
+
+    pub fn register_keybinds(&mut self) {
+        let manager = self.manager.as_ref().unwrap();
+        let hotkeys: Vec<HotKey> = self.hotkeys.keys().cloned().collect();
+
+        if let Err(e) = manager.unregister_all(&hotkeys) {
+            warn!("Failed to unregister keybinds: {}", e);
+            return;
+        }
+        let _ = self.hotkeys.clear();
+
+        let sfxs = files::get_soundboard();
+        for sfx in sfxs {
+            let sfxkeys: Vec<String> = sfx.keys;
+            let mut codes: Option<Code> = None;
+            let mut modifiers: Modifiers = Modifiers::empty();
+
+            for key in sfxkeys {
+                let (code, modif) = Hotkeys::string_to_code_or_mod(key);
+                if code.is_some() {
+                    codes = code;
+                } else if modif.is_some() {
+                    modifiers.insert(modif.unwrap());
+                }
+            }
+
+            if codes.is_none() {
+                continue;
+            }
+
+            let hotkey = HotKey::new(Some(modifiers), codes.unwrap());
+            if let Err(e) = manager.register(hotkey) {
+                warn!("Failed to register keybinds: {}", e);
+                continue;
+            }
+
+            let _ = self.hotkeys.insert(hotkey, sfx.name);
+        }
+    }
+
+    fn string_to_code_or_mod(string: String) -> (Option<Code>, Option<Modifiers>) {
+        let modifier = match string.as_str() {
+            "Ctrl" => Some(Modifiers::CONTROL),
+            "Alt" => Some(Modifiers::ALT),
+            "Shift" => Some(Modifiers::SHIFT),
+            "CapsLock" => Some(Modifiers::CAPS_LOCK),
+            _ => None
+        };
+        if modifier.is_some() {
+            return (None, modifier);
+        }
+
+        let key = match string.as_str() {
+            "A" => Some(Code::KeyA),
+            "B" => Some(Code::KeyB),
+            "C" => Some(Code::KeyC),
+            "D" => Some(Code::KeyD),
+            "E" => Some(Code::KeyE),
+            "F" => Some(Code::KeyF),
+            "G" => Some(Code::KeyG),
+            "H" => Some(Code::KeyH),
+            "I" => Some(Code::KeyI),
+            "J" => Some(Code::KeyJ),
+            "K" => Some(Code::KeyK),
+            "L" => Some(Code::KeyL),
+            "M" => Some(Code::KeyM),
+            "N" => Some(Code::KeyN),
+            "O" => Some(Code::KeyO),
+            "P" => Some(Code::KeyP),
+            "Q" => Some(Code::KeyQ),
+            "R" => Some(Code::KeyR),
+            "S" => Some(Code::KeyS),
+            "T" => Some(Code::KeyT),
+            "U" => Some(Code::KeyU),
+            "V" => Some(Code::KeyV),
+            "W" => Some(Code::KeyW),
+            "X" => Some(Code::KeyX),
+            "Y" => Some(Code::KeyY),
+            "Z" => Some(Code::KeyZ),
+
+            "F1" => Some(Code::F1),
+            "F2" => Some(Code::F2),
+            "F3" => Some(Code::F3),
+            "F4" => Some(Code::F4),
+            "F5" => Some(Code::F5),
+            "F6" => Some(Code::F6),
+            "F7" => Some(Code::F7),
+            "F8" => Some(Code::F8),
+            "F9" => Some(Code::F9),
+            "F10" => Some(Code::F10),
+            "F11" => Some(Code::F11),
+            "F12" => Some(Code::F12),
+
+            "1" => Some(Code::Digit1),
+            "2" => Some(Code::Digit2),
+            "3" => Some(Code::Digit3),
+            "4" => Some(Code::Digit4),
+            "5" => Some(Code::Digit5),
+            "6" => Some(Code::Digit6),
+            "7" => Some(Code::Digit7),
+            "8" => Some(Code::Digit8),
+            "9" => Some(Code::Digit9),
+            "0" => Some(Code::Digit0),
+
+            "-" => Some(Code::Minus),
+            "=" => Some(Code::Equal),
+            "[" => Some(Code::BracketLeft),
+            "]" => Some(Code::BracketRight),
+            "Enter" => Some(Code::Enter),
+            "/" => Some(Code::Slash),
+            "." => Some(Code::Period),
+            "," => Some(Code::Comma),
+            ";" => Some(Code::Semicolon),
+            "\\" => Some(Code::Backslash),
+            "'" => Some(Code::Quote),
+
+            "Left" => Some(Code::ArrowLeft),
+            "Right" => Some(Code::ArrowRight),
+            "Up" => Some(Code::ArrowUp),
+            "Down" => Some(Code::ArrowDown),
+            
+            _ => None
+        };
+
+        if key.is_some() {
+            return (key, None);
+        }
+        
+        return (None, None);
+    }
+}
+
+fn handle_request(cmd: &str, args: Value, hotkeys: &mut Hotkeys) -> Value {
     if cmd == "get_soundboard" {
         let soundboard = files::get_soundboard();
         return json!({"result": soundboard});
@@ -71,7 +438,7 @@ fn handle_request(cmd: &str, args: serde_json::Value) -> serde_json::Value {
                                     sound.to_string(),
                                     low,
                                     keys
-                                )/* .map(|_| {register_keybinds(&app)})*/;
+                                ).map(|_| {hotkeys.register_keybinds()});
                                 return json!({"result": res});
                             }
                         }
@@ -131,7 +498,7 @@ fn handle_request(cmd: &str, args: serde_json::Value) -> serde_json::Value {
                                     oldname.to_string(),
                                     low,
                                     keys,
-                                )/* .map(|_| {register_keybinds(&app)})*/;
+                                ).map(|_| {hotkeys.register_keybinds()});
                                 return json!({"result": res});
                             }
                         }
@@ -235,41 +602,13 @@ fn handle_request(cmd: &str, args: serde_json::Value) -> serde_json::Value {
         if let Some(url) = args.get("url").and_then(|v| v.as_str()) {
             return json!({"result": open::that(url).map_err(|e| e.to_string())});
         }
-    } else if cmd == "key_bind_select" {
-        let device_state = DeviceState::new();
-        let mut final_keys: Vec<String> = Vec::new();
-
-        loop {
-            if device_state.get_keys().is_empty() { break; }
-            thread::sleep(Duration::from_millis(50));
-        }
-
-        loop {
-            let keys = device_state.get_keys();
-            if !keys.is_empty() { break; }
-            thread::sleep(Duration::from_millis(20));
-        }
-
-        loop {
-            let current_keys = device_state.get_keys();
-
-            if current_keys.is_empty() && !final_keys.is_empty() {
-                break;
-            }
-
-            if current_keys.len() > final_keys.len() {
-                final_keys = current_keys.iter().map(|k| format!("{:?}", k)).collect();
-            }
-
-            thread::sleep(Duration::from_millis(10));
-        }
-
-        return json!({"result": final_keys});
     } else if cmd == "reopen_ui" {
         log!("Reopening UI");
 
         run_ui();
     } else if cmd == "quit" {
+        IS_OPEN.store(false, Ordering::SeqCst);
+
         let settings = files::get_settings();
         if settings.tray == false {
             log::write_debuglog();
@@ -281,100 +620,29 @@ fn handle_request(cmd: &str, args: serde_json::Value) -> serde_json::Value {
 }
 
 pub(crate) fn call_instance() {
-    let name = "ViceUiPipe".to_ns_name::<GenericNamespaced>().expect("Failed to create pipe name") ;
-
-    if let Ok(mut stream) = LocalSocketStream::connect(name) {
+    if let Ok(mut stream) = TcpStream::connect("127.0.0.1:8423") {
         let request = json!({"cmd": "reopen_ui", "args": {}, "respond": false});
-        stream.write(request.to_string().as_bytes()).unwrap();
-        stream.write(b"\n").unwrap();
-        stream.flush().unwrap();
+        stream.write_all(request.to_string().as_bytes()).unwrap();
+        stream.write_all(b"\n").unwrap();
         log!("Sent reopen command to instance");
     } else {
         error!("Failed to connect to instance");
     }
 }
 
-fn handle_client(mut stream: LocalSocketStream) -> std::io::Result<()> {
-    let mut reader = BufReader::new(stream.try_clone()?);
-    let mut buffer_bytes: Vec<u8> = Vec::new();
-
-    loop {
-        buffer_bytes.clear();
-        let n = reader.read_until(b'\n', &mut buffer_bytes)?;
-        if n == 0 {
-            log!("Client disconnected");
-            break;
-        }
-
-        let buffer_str = String::from_utf8_lossy(&buffer_bytes);
-
-        let buffer_trimmed = buffer_str.trim();
-        if buffer_trimmed.is_empty() { continue; }
-
-        let value: serde_json::Value = match serde_json::from_str(buffer_trimmed) {
-            Ok(v) => v,
-            Err(e) => { error!("Invalid JSON: {}", e); continue; }
-        };
-
-        if let Some(cmd) = value.get("cmd").and_then(|v| v.as_str()) {
-            if let Some(args) = value.get("args") {
-                let response = handle_request(cmd, args.clone());
-
-                if let Some(respond) = value.get("respond").and_then(|v| v.as_bool()) {
-                    if respond == true {
-                        let formatted = format!("{}\n", response["result"]);
-                        stream.write_all(formatted.as_bytes())?;
-                        stream.flush()?;
-                    }
-                }
-            }
-        }
-    }
-
-    Ok(())
-}
-
-pub(crate) fn run_ipc() {
-    let name = "ViceUiPipe".to_ns_name::<GenericNamespaced>().unwrap();
-
-    let listener = ListenerOptions::new()
-        .name(name)
-        .create_sync()
-        .unwrap();
-
-    log!("Listening for connections…");
-
-    if let Err(e) = std::thread::Builder::new()
-        .name("IPC Listener".into())
-        .spawn(move || {
-            for connection in listener.incoming() {
-                match connection {
-                    Ok(stream) => {
-                        log!("Client connected");
-
-                        std::thread::spawn(move || {
-                            if let Err(e) = handle_client(stream) {
-                                error!("Client error: {}", e);
-                            }
-                        });
-                    }
-                    Err(e) => error!("Failed to accept connection: {}", e),
-                }
-            }
-        }) {
-        critical!("Failed to spawn IPC listener thread: {}", e);
-        log::write_crashlog();
-    }
-}
-
 pub(crate) fn run_ui() {
-    let args: Vec<String> = std::env::args().collect();
-    let changelog = args.contains(&"--changelog".to_string());
     unsafe {
-        log!("Opening UI with hollowing");
-        if !hollow_process(EMBEDDED_UI.as_ptr(), changelog) {
-            log!("Resorting with no hollowing");
-            run_in_job(EMBEDDED_UI.as_ptr(), EMBEDDED_UI.len(), changelog);
+        if IS_OPEN.load(Ordering::SeqCst) == false {
+            IS_OPEN.store(true, Ordering::SeqCst);
+
+            let args: Vec<String> = std::env::args().collect();
+            let changelog = args.contains(&"--changelog".to_string());
+
+            log!("Opening UI with hollowing");
+            if !hollow_process(EMBEDDED_UI.as_ptr(), changelog) {
+                log!("Resorting with no hollowing");
+                run_in_job(EMBEDDED_UI.as_ptr(), EMBEDDED_UI.len(), changelog);
+            }
         }
     }
 }

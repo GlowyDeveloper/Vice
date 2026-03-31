@@ -165,16 +165,21 @@ public partial class SfxsPage : UserControl
 
     private async void SaveButtonClick(object? sender, RoutedEventArgs e)
     {
-        List<byte> parsedColor = new List<byte>();
-        parsedColor.Add(EditedItemTemplate!.Color.R);
-        parsedColor.Add(EditedItemTemplate.Color.G);
-        parsedColor.Add(EditedItemTemplate.Color.B);
+        List<byte> parsedColor =
+        [
+            EditedItemTemplate!.Color.R,
+            EditedItemTemplate.Color.G,
+            EditedItemTemplate.Color.B,
+        ];
+
+        List<string> parsedKeys = [];
+        Keybinds.Text.Split(" + ").ToList().ForEach(x => parsedKeys.Add(x.Trim()));
 
         if (EditedItemTemplate.CreatingNew)
         {
             await _invokeRequest!.SendRequestAsync(
                 "new_sound",
-                new Dictionary<string, object> { { "name", EditedItemTemplate.name }, { "icon", EditedItemTemplate.icon }, { "color", parsedColor }, { "low", EditedItemTemplate.lowlatency }, { "keys", EditedItemTemplate.keys }, { "sound", EditedItemTemplate.sound } },
+                new Dictionary<string, object> { { "name", EditedItemTemplate.name }, { "icon", EditedItemTemplate.icon }, { "color", parsedColor }, { "low", EditedItemTemplate.lowlatency }, { "keys", parsedKeys }, { "sound", EditedItemTemplate.sound } },
                 false
             );
         }
@@ -182,7 +187,7 @@ public partial class SfxsPage : UserControl
         {
             await _invokeRequest!.SendRequestAsync(
                 "edit_sound",
-                new Dictionary<string, object> { { "name", EditedItemTemplate.name }, { "icon", EditedItemTemplate.icon },  { "color", parsedColor }, { "low", EditedItemTemplate.lowlatency }, { "oldname", EditedItemTemplate.OldName }, { "keys", EditedItemTemplate.keys } },
+                new Dictionary<string, object> { { "name", EditedItemTemplate.name }, { "icon", EditedItemTemplate.icon },  { "color", parsedColor }, { "low", EditedItemTemplate.lowlatency }, { "oldname", EditedItemTemplate.OldName }, { "keys", parsedKeys } },
                 false
             );
         }
@@ -289,11 +294,11 @@ public class SfxItemTemplate : SFXClass, INotifyPropertyChanged
 
     public string KeysText
     {
-        get => string.Join("+", keys);
+        get => string.Join(" + ", keys);
         set
         {
             keys.Clear();
-            value.Split('+').ToList().ForEach(x => keys.Add(x.Trim()));
+            value.Split(" + ").ToList().ForEach(x => keys.Add(x.Trim()));
         }
     }
 }
