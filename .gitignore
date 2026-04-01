@@ -39,3 +39,7 @@ flutter/*.swp
 # Rust
 target/
 updater/target/
+
+# C#/Avalonia
+Ui/bin/
+Ui/obj/

@@ -24,13 +24,19 @@ pub(crate) struct SoundboardSFX {
     pub(crate) keys: Vec<String>
 }
 
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
+pub(crate) enum DeviceOrApp {
+    Device,
+    App
+}
+
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone, Default)]
 pub(crate) struct Channel {
     pub(crate) name: String,
     pub(crate) icon: String,
     pub(crate) color: [u8; 3],
     pub(crate) device: String,
-    pub(crate) deviceorapp: bool,
+    pub(crate) deviceorapp: DeviceOrApp,
     pub(crate) lowlatency: bool,
     pub(crate) volume: f32
 }
@@ -65,7 +71,23 @@ impl Default for Settings {
     }
 }
 
-const EMBEDDED_BIN: &[u8] = include_bytes!("../updater/target/release/updater.exe");
+impl Default for DeviceOrApp {
+    fn default() -> Self {
+        DeviceOrApp::Device
+    }
+}
+
+impl DeviceOrApp {
+    pub(crate) fn from_string(s: &str) -> Self {
+        match s {
+            "Device" => DeviceOrApp::Device,
+            "App" => DeviceOrApp::App,
+            _ => DeviceOrApp::Device, 
+        }
+    }
+}
+
+const EMBEDDED_UPDATER: &[u8] = include_bytes!("../updater/target/release/updater.exe");
 
 pub(crate) fn app_base() -> PathBuf {
     let base = env::var("APPDATA");
@@ -285,7 +307,10 @@ pub(crate) fn fix_channel(broken: Value) -> Channel {
     }
 
     if let Some(deviceorapp) = broken.get("deviceorapp").and_then(|v| v.as_bool()) {
-        channel.deviceorapp = deviceorapp;
+        channel.deviceorapp = match deviceorapp {
+            true => DeviceOrApp::Device,
+            false => DeviceOrApp::App
+        };
     }
 
     if let Some(lowlatency) = broken.get("lowlatency").and_then(|v| v.as_bool()) {
@@ -429,16 +454,7 @@ pub(crate) fn extract_updater(arg: &str, path: PathBuf, debug: &str) -> Result<S
     temp_path.push(&filename);
 
     let mut file = fs::File::create(&temp_path).unwrap();
-    let _ = file.write_all(EMBEDDED_BIN);
-
-    #[cfg(unix)]
-    {
-        let perms = fs::metadata(&temp_path)
-            .map_err(|e| e.to_string())?
-            .permissions();
-
-        fs::set_permissions(&temp_path, perms).map_err(|e| e.to_string())?;
-    }
+    let _ = file.write_all(EMBEDDED_UPDATER);
 
     let _ = Command::new("cmd")
         .args(["/C", "start", "", &temp_path.to_string_lossy().to_string(), arg, &path.to_string_lossy().to_string(), debug])

@@ -4,37 +4,35 @@ on:
   workflow_dispatch:
 
 jobs:
-  flutter:
-    name: Build Flutter Web
-    runs-on: ubuntu-latest
+  frontend:
+    name: Build Frontend
+    runs-on: windows-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Install flutter
-        uses: subosito/flutter-action@v2
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
         with:
-          flutter-version: "3.35.6"
-          channel: "stable"
+          dotnet-version: '10.0.x'
 
-      - name: Build Flutter Web
-        run: |
-          flutter config --no-analytics
-          flutter config --no-cli-animations
-          cd flutter
-          flutter build web --release --no-wasm-dry-run
+      - name: Restore
+        run: dotnet restore
 
-      - name: Upload Flutter build
+      - name: Publish
+        run: dotnet publish -c Release
+
+      - name: Upload .NET Build
         uses: actions/upload-artifact@v4
         with:
-          name: flutter-build
-          path: flutter/build/web
+          name: net-build
+          path: Ui/bin/Release/net10.0/win-x64/publish/Vice.Ui.exe
 
   updater:
     name: Build updater
     runs-on: windows-latest
     steps:
-      - name: Checkout repo
+      - name: Checkout Repo
         uses: actions/checkout@v4
 
       - name: Install Rust
@@ -43,82 +41,23 @@ jobs:
           toolchain: stable
 
       - name: Build Updater
-        shell: bash
+        shell: pwsh
         run: |
           cd updater
           cargo build -r
 
-      - name: Upload updater
+      - name: Upload Updater
         uses: actions/upload-artifact@v4
         with:
           name: updater
           path: updater/target/release/updater.exe
-  
-  debug:
-    name: Build Debug App
-    runs-on: windows-latest
-    needs: [flutter, updater]
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
-
-      - name: Download Flutter build
-        uses: actions/download-artifact@v4
-        with:
-          name: flutter-build
-          path: flutter/build/web
-
-      - name: Get Console Icons
-        shell: pwsh
-        run: |
-          ren icons icons-release
-          ren icons-console icons
-
-      - name: Install C++ compiler
-        shell: pwsh
-        run: |
-          choco install mingw -y
-          refreshenv
-
-      - name: Download Updater
-        uses: actions/download-artifact@v4
-        with:
-          name: updater
-          path: updater/target/release
-
-      - name: Build Tauri app
-        shell: bash
-        run: |
-          cargo build
-
-      - name: Rename Files
-        shell: pwsh
-        run: |
-          cd target/debug
-          Rename-Item -Path Vice.exe -NewName Vice-debug.exe
-
-      - name: Upload debug build
-        uses: actions/upload-artifact@v4
-        with:
-          name: debug
-          path: target/debug/Vice-debug.exe
 
   app:
-    name: Build Tauri App
+    name: Build Rust App
     runs-on: windows-latest
-    needs: [flutter, updater]
+    needs: [frontend, updater]
     steps:
-      - name: Checkout repo
+      - name: Checkout Repo
         uses: actions/checkout@v4
 
       - name: Install Rust
@@ -126,18 +65,13 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
-
-      - name: Download Flutter build
+      - name: Download .NET Build
         uses: actions/download-artifact@v4
         with:
-          name: flutter-build
-          path: flutter/build/web
+          name: net-build
+          path: Ui/bin/Release/net10.0/win-x64/publish
 
-      - name: Install C++ compiler
+      - name: Install C++ Compiler
         shell: pwsh
         run: |
           choco install mingw -y
@@ -149,45 +83,18 @@ jobs:
           name: updater
           path: updater/target/release
 
-      - name: Build Tauri app
+      - name: Build Rust App
         shell: bash
         run: |
           cargo build --release
 
-      - name: Upload release build
-        uses: actions/upload-artifact@v4
-        with:
-          name: release
-          path: target/release/Vice.exe
-
-  zip:
-    name: Zip Artifacts
-    runs-on: windows-latest
-    needs: [app, debug]
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-          
-      - name: Download Debug
-        uses: actions/download-artifact@v4
-        with:
-          name: debug
-          path: temp
-
-      - name: Download Release
-        uses: actions/download-artifact@v4
-        with:
-          name: release
-          path: temp
-
       - name: Package Release Zip
         shell: pwsh
         run: |
-          cd temp
-          Compress-Archive -Path Vice.exe, Vice-debug.exe, ../LICENSE, ../docs/Installation.md -DestinationPath windows.zip -Force
+          Compress-Archive -Path target/release/Vice.exe, LICENSE, docs/Installation.md -DestinationPath windows.zip -Force
 
-      - name: Upload final zip
+      - name: Upload Final Zip
         uses: actions/upload-artifact@v4
         with:
           name: full-windows
-          path: temp/*.zip
+          path: windows.zip

@@ -2,7 +2,7 @@ use std::{
     ffi::{CStr, CString, c_char}, fs, sync::atomic::{AtomicBool, Ordering}, thread
 };
 
-use crate::{critical, error, warn, files::{self, Channel}, log};
+use crate::{critical, error, files::{self, Channel, DeviceOrApp}, log};
 
 #[link(name = "audio")]
 unsafe extern "C" {
@@ -17,22 +17,6 @@ unsafe extern "C" {
     fn insert_volume(key: *const c_char, value: f32);
     fn reset_volume();
     fn get_volume_display(key: *const c_char) -> f32;
-}
-
-#[no_mangle]
-pub extern "C" fn error(info: *const c_char) {
-    unsafe {
-        let string = CStr::from_ptr(info).to_string_lossy().into_owned();
-        error!("{}", string);
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn warn(info: *const c_char) {
-    unsafe {
-        let string = CStr::from_ptr(info).to_string_lossy().into_owned();
-        warn!("{}", string);
-    }
 }
 
 fn get_blocks(channel_name: String) -> String {
@@ -229,7 +213,7 @@ pub(crate) fn start() {
                     insert_volume(channel_name, channel.volume);
                 }
 
-                if channel.deviceorapp {
+                if channel.deviceorapp == DeviceOrApp::Device {
                     manage_device(channel.device, files::get_settings().output, channel.lowlatency, channel.name);
                 } else {
                     manage_app(channel.device, files::get_settings().output, channel.lowlatency, channel.name);
@@ -237,6 +221,7 @@ pub(crate) fn start() {
             }) {
 
             critical!("Failed to spawn audio thread \"{}\": {}", thread_name, e);
+            log::write_crashlog();
         }
     }
 

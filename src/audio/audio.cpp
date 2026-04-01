@@ -345,8 +345,7 @@ extern "C" {
 
     void find_volume(const char* channel_name, float* buffer, size_t sampleCount) {
         float peak = 0.0f;
-        for (size_t i = 0; i < sampleCount; ++i)
-        {
+        for (size_t i = 0; i < sampleCount; ++i) {
             float v = std::fabs(buffer[i]);
             if (v > peak)
                 peak = v;
@@ -669,6 +668,7 @@ extern "C" {
         } else {
             std::string msg = "Unsupported device format";
             error(msg.c_str());
+            
             CoTaskMemFree(pwfx);
             audioClient->Release();
             targetDevice->Release();

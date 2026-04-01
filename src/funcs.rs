@@ -1,15 +1,14 @@
 use std::path::Path;
 use std::{net::TcpStream, time::Duration, fs};
-use rfd::{MessageDialog, MessageDialogResult};
 use serde::Deserialize;
 
-use crate::files::{self, Channel, Settings, SoundboardSFX};
+use crate::files::{self, Channel, DeviceOrApp, Settings, SoundboardSFX};
 use crate::audio::{self};
 use crate::{error, performance, warn};
 
 static SFX_EXTENTIONS: [&str; 6] = ["wav", "mp3", "wma", "aac", "m4a", "flac"];
 
-pub(crate) fn new_channel(color: [u8; 3], icon: String, name: String, deviceapps: String, device: bool, low: bool) -> Result<(), String> {
+pub(crate) fn new_channel(color: [u8; 3], icon: String, name: String, deviceapps: String, device: DeviceOrApp, low: bool) -> Result<(), String> {
     let channel: Channel = Channel{name, icon, color, device: deviceapps, deviceorapp: device, lowlatency: low, volume: 1.0};
     let mut channels: Vec<Channel> = files::get_channels();
 
@@ -42,7 +41,7 @@ pub(crate) fn new_sound(color: [u8; 3], icon: String, name: String, sound: Strin
     return files::save_soundboard(sfxs);
 }
 
-pub(crate) fn edit_channel(color: [u8; 3], icon: String, name: String, deviceapps: String, device: bool, oldname: String, low: bool) -> Result<(), String> {
+pub(crate) fn edit_channel(color: [u8; 3], icon: String, name: String, deviceapps: String, device: DeviceOrApp, oldname: String, low: bool) -> Result<(), String> {
     let mut channels: Vec<Channel> = files::get_channels();
 
     if let Some(pos) = channels.iter().position(|c: &Channel| c.name == oldname) {
@@ -108,17 +107,6 @@ pub(crate) fn delete_sound(name: String) -> Result<(), String> {
     }
     
     return files::save_soundboard(sfxs);
-}
-
-pub(crate) fn pick_menu_sound() -> Option<String> {
-    if let Some(path) = rfd::FileDialog::new()
-        .add_filter("Sound Files", &SFX_EXTENTIONS)
-        .pick_file()
-    {
-        Some(path.to_string_lossy().to_string())
-    } else {
-        None
-    }
 }
 
 pub(crate) fn get_devices() -> Vec<String> {
@@ -198,19 +186,16 @@ pub(crate) fn get_volume(name: String) -> String {
 }
 
 pub(crate) fn uninstall() -> Result<String, String> {
-    let res: MessageDialogResult = MessageDialog::new()
-        .set_title("Uninstall")
-        .set_description("Are you sure you want to uninstall Vice?")
-        .set_buttons(rfd::MessageButtons::YesNo)
-        .show();
-
-    if res == MessageDialogResult::Yes {
-        return files::extract_updater("uninstall", std::env::current_exe().unwrap(), "false");
+    let mut debug = "false";
+    let args: Vec<String> = std::env::args().collect();
+    if args.contains(&"--debug".to_string()) {
+        debug = "true";
     }
-    Ok("Undid".to_string())
+
+    return files::extract_updater("uninstall", std::env::current_exe().unwrap(), debug);
 }
 
-pub(crate) fn update() -> Result<String, String> {
+pub(crate) fn update() -> Result<(i32, String), String> {
     #[derive(Deserialize)]
     struct Release {
         name: String
@@ -222,13 +207,7 @@ pub(crate) fn update() -> Result<String, String> {
     ).is_ok();
 
     if connected == false {
-        MessageDialog::new()
-            .set_title("No Internet Connection")
-            .set_description("It appears there is no internet connection.")
-            .set_buttons(rfd::MessageButtons::Ok)
-            .show();
-
-        return Ok("No Internet".to_string());
+        return Ok((1, "".to_string()));
     }
 
     let url = "https://api.github.com/repos/GlowyDeveloper/Vice/releases/latest";
@@ -245,31 +224,20 @@ pub(crate) fn update() -> Result<String, String> {
     res.name.remove(0);
 
     if res.name == env!("CARGO_PKG_VERSION") {
-        MessageDialog::new()
-            .set_title("No Update")
-            .set_description("It appears there is no update available.")
-            .set_buttons(rfd::MessageButtons::Ok)
-            .show();
-
-        return Ok("No Update".to_string());
+        return Ok((2, "".to_string()));
     }
 
-    let res_msg = MessageDialog::new()
-        .set_title("Update")
-        .set_description(format!("Are you sure you want to update Vice from {} to {}?", env!("CARGO_PKG_VERSION"), res.name))
-        .set_buttons(rfd::MessageButtons::YesNo)
-        .show();
+    Ok((0, res.name))
+}
 
-    if res_msg == MessageDialogResult::Yes {
-        #[cfg(debug_assertions)]
-        let debug = "true";
-
-        #[cfg(not(debug_assertions))]
-        let debug = "false";
-
-        return files::extract_updater("update", std::env::current_exe().unwrap(), debug);
+pub(crate) fn confirm_update() -> Result<String, String> {
+    let mut debug = "false";
+    let args: Vec<String> = std::env::args().collect();
+    if args.contains(&"--debug".to_string()) {
+        debug = "true";
     }
-    Ok("Undid".to_string())
+
+    return files::extract_updater("update", std::env::current_exe().unwrap(), debug)
 }
 
 pub(crate) fn save_blocks(item: String, blocks: String) {

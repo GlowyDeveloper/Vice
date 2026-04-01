@@ -1,0 +1,199 @@
+﻿<Grid xmlns="https://github.com/avaloniaui"
+            xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+            x:Class="Vice.Ui.Controls.IconSelection"
+            x:CompileBindings="True">
+    <Grid.RowDefinitions>
+        <RowDefinition Height="*"/>
+        <RowDefinition Height="*"/>
+        <RowDefinition Height="*"/>
+        <RowDefinition Height="*"/>
+        <RowDefinition Height="*"/>
+    </Grid.RowDefinitions>
+    <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="*"/>
+    </Grid.ColumnDefinitions>
+    
+    <Button Grid.Row="0" Grid.Column="0"
+            Background="Transparent"
+            BorderThickness="0"
+            Click="Callback"
+            Tag="question_regular">
+        <PathIcon Data="{StaticResource question_regular}"/>
+    </Button>
+    <Button Grid.Row="1" Grid.Column="0"
+            Background="Transparent"
+            BorderThickness="0"
+            Click="Callback"
+            Tag="color_regular">
+        <PathIcon Data="{StaticResource color_regular}"/>
+    </Button>
+    <Button Grid.Row="2" Grid.Column="0"
+            Background="Transparent"
+            BorderThickness="0"
+            Click="Callback"
+            Tag="trophy_regular">
+        <PathIcon Data="{StaticResource trophy_regular}"/>
+    </Button>
+    <Button Grid.Row="3" Grid.Column="0"
+            Background="Transparent"
+            BorderThickness="0"
+            Click="Callback"
+            Tag="gallery_regular">
+        <PathIcon Data="{StaticResource gallery_regular}"/>
+    </Button>
+    <Button Grid.Row="4" Grid.Column="0"
+            Background="Transparent"
+            BorderThickness="0"
+            Click="Callback"
+            Tag="play_regular">
+        <PathIcon Data="{StaticResource play_regular}"/>
+    </Button>
+    
+    <Button Grid.Row="0" Grid.Column="1"
+            Background="Transparent"
+            BorderThickness="0"
+            Click="Callback"
+            Tag="vehicle_car_regular">
+        <PathIcon Data="{StaticResource vehicle_car_regular}"/>
+    </Button>
+    <Button Grid.Row="1" Grid.Column="1"
+            Background="Transparent"
+            BorderThickness="0"
+            Click="Callback"
+            Tag="apps_regular">
+        <PathIcon Data="{StaticResource apps_regular}"/>
+    </Button>
+    <Button Grid.Row="2" Grid.Column="1"
+            Background="Transparent"
+            BorderThickness="0"
+            Click="Callback"
+            Tag="music_regular">
+        <PathIcon Data="{StaticResource music_regular}"/>
+    </Button>
+    <Button Grid.Row="3" Grid.Column="1"
+            Background="Transparent"
+            BorderThickness="0"
+            Click="Callback"
+            Tag="notepad_regular">
+        <PathIcon Data="{StaticResource notepad_regular}"/>
+    </Button>
+    <Button Grid.Row="4" Grid.Column="1"
+            Background="Transparent"
+            BorderThickness="0"
+            Click="Callback"
+            Tag="grid_regular">
+        <PathIcon Data="{StaticResource grid_regular}"/>
+    </Button>
+    
+    <Button Grid.Row="0" Grid.Column="2"
+            Background="Transparent"
+            BorderThickness="0"
+            Click="Callback"
+            Tag="gavel_regular">
+        <PathIcon Data="{StaticResource gavel_regular}"/>
+    </Button>
+    <Button Grid.Row="1" Grid.Column="2"
+            Background="Transparent"
+            BorderThickness="0"
+            Click="Callback"
+            Tag="pause_regular">
+        <PathIcon Data="{StaticResource pause_regular}"/>
+    </Button>
+    <Button Grid.Row="2" Grid.Column="2"
+            Background="Transparent"
+            BorderThickness="0"
+            Click="Callback"
+            Tag="power_regular">
+        <PathIcon Data="{StaticResource power_regular}"/>
+    </Button>
+    <Button Grid.Row="3" Grid.Column="2"
+            Background="Transparent"
+            BorderThickness="0"
+            Click="Callback"
+            Tag="shield_regular">
+        <PathIcon Data="{StaticResource shield_regular}"/>
+    </Button>
+    <Button Grid.Row="4" Grid.Column="2"
+            Background="Transparent"
+            BorderThickness="0"
+            Click="Callback"
+            Tag="autosum_regular">
+        <PathIcon Data="{StaticResource autosum_regular}"/>
+    </Button>
+    
+    <Button Grid.Row="0" Grid.Column="3"
+            Background="Transparent"
+            BorderThickness="0"
+            Click="Callback"
+            Tag="next_regular">
+        <PathIcon Data="{StaticResource next_regular}"/>
+    </Button>
+    <Button Grid.Row="1" Grid.Column="3"
+            Background="Transparent"
+            BorderThickness="0"
+            Click="Callback"
+            Tag="magic_wand_regular">
+        <PathIcon Data="{StaticResource magic_wand_regular}"/>
+    </Button>
+    <Button Grid.Row="2" Grid.Column="3"
+            Background="Transparent"
+            BorderThickness="0"
+            Click="Callback"
+            Tag="top_speed_regular">
+        <PathIcon Data="{StaticResource top_speed_regular}"/>
+    </Button>
+    <Button Grid.Row="3" Grid.Column="3"
+            Background="Transparent"
+            BorderThickness="0"
+            Click="Callback"
+            Tag="mic_on_regular">
+        <PathIcon Data="{StaticResource mic_on_regular}"/>
+    </Button>
+    <Button Grid.Row="4" Grid.Column="3"
+            Background="Transparent"
+            BorderThickness="0"
+            Click="Callback"
+            Tag="mic_off_regular">
+        <PathIcon Data="{StaticResource mic_off_regular}"/>
+    </Button>
+    
+    <Button Grid.Row="0" Grid.Column="4"
+            Background="Transparent"
+            BorderThickness="0"
+            Click="Callback"
+            Tag="record_regular">
+        <PathIcon Data="{StaticResource record_regular}"/>
+    </Button>
+    <Button Grid.Row="1" Grid.Column="4"
+            Background="Transparent"
+            BorderThickness="0"
+            Click="Callback"
+            Tag="glasses_off_regular">
+        <PathIcon Data="{StaticResource glasses_off_regular}"/>
+    </Button>
+    <Button Grid.Row="2" Grid.Column="4"
+            Background="Transparent"
+            BorderThickness="0"
+            Click="Callback"
+            Tag="chat_off_regular">
+        <PathIcon Data="{StaticResource chat_off_regular}"/>
+    </Button>
+    <Button Grid.Row="3" Grid.Column="4"
+            Background="Transparent"
+            BorderThickness="0"
+            Click="Callback"
+            Tag="caret_up_regular">
+        <PathIcon Data="{StaticResource caret_up_regular}"/>
+    </Button>
+    <Button Grid.Row="4" Grid.Column="4"
+            Background="Transparent"
+            BorderThickness="0"
+            Click="Callback"
+            Tag="speaker_regular">
+        <PathIcon Data="{StaticResource speaker_regular}"/>
+    </Button>
+</Grid>
