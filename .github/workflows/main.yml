@@ -17,10 +17,14 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore
-        run: dotnet restore
+        run: |
+            cd Ui
+            dotnet restore
 
       - name: Publish
-        run: dotnet publish -c Release
+        run: |
+            cd Ui
+            dotnet publish -c Release
 
       - name: Upload .NET Build
         uses: actions/upload-artifact@v4
