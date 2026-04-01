@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.Threading;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -16,6 +17,8 @@ namespace Vice.Ui.Pages;
 public partial class ChannelsPage : UserControl
 {
     private InvokeRequest? _invokeRequest;
+    private SettingsClass? _settings;
+    private Timer? timer;
     
     public static readonly StyledProperty<bool> IsLoadedProperty =
         AvaloniaProperty.Register<ChannelsPage, bool>(nameof(IsLoaded), false);
@@ -59,15 +62,50 @@ public partial class ChannelsPage : UserControl
         InitializeComponent();
     }
 
-    public async void Load(InvokeRequest request)
+    public async void Load(InvokeRequest request, SettingsClass settings)
     {
         DataContext = this;
 
         _invokeRequest = request;
+        _settings = settings;
 
         Refresh();
 
-        //TODO: Volume bars
+        if (_settings!.peaks)
+        {
+            timer = new Timer(Volume, null, 0, 100);
+        }
+    }
+
+    private async void Volume(object? state)
+    {
+        try
+        {
+            foreach (var item in Items)
+            {
+                var result = await _invokeRequest!.SendRequestAsync(
+                    "get_volume",
+                    new Dictionary<string, object> { { "name", (item.name as string)! } }
+                );
+                
+                var trimmedResult = result?.Trim().Trim('"');
+                if (float.TryParse(trimmedResult, out float size))
+                {
+                    item.IndicatorVolume = Math.Clamp(size * 3, 0, 1);
+                    item.OnPropertyChanged(nameof(item.IndicatorVolume));
+                    item.OnPropertyChanged(nameof(item.IndicatorColor));
+                }
+                else
+                {
+                    Console.WriteLine($"Failed to parse '{result}' as float.");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Volume parsing error: {ex.Message}");
+            throw;
+        }
     }
     
     protected override void OnSizeChanged(SizeChangedEventArgs e)
@@ -335,8 +373,6 @@ public class ChannelItemTemplate : ChannelsClass, INotifyPropertyChanged
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propname));
     
     private Color _color;
-    private float _volumeFloat;
-    private double _barHeight;
     
     public ChannelItemTemplate(string Nname, string Nicon, List<byte> Ncolor, string Ndevice, DeviceOrApp NdeviceOrApp, bool Nlowlatency, double Nvolume, bool NCreatingNew)
     : base(Nname, Nicon, Ncolor, Ndevice, NdeviceOrApp, Nlowlatency, Nvolume)
@@ -383,4 +419,15 @@ public class ChannelItemTemplate : ChannelsClass, INotifyPropertyChanged
     }
     public string OldName { get; set; }
     public bool CreatingNew { get; set; }
+    public float IndicatorVolume { get; set; }
+    public Color IndicatorColor
+    {
+        get
+        {
+            if (IndicatorVolume <= 0.4) return Colors.Green;
+            if (IndicatorVolume <= 0.6) return Colors.Orange;
+            if (IndicatorVolume <= 0.8) return Colors.OrangeRed;
+            return Colors.Red; 
+        }
+    }
 }

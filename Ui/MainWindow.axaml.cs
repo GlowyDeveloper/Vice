@@ -46,7 +46,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         DataContext = this;
 
         var page = new ChannelsPage();
-        page.Load(_invokeRequest);
+        page.Load(_invokeRequest, _settings);
 
         PageHost.Content = page;
         ChannelsItem.IsSelected = true;
@@ -84,7 +84,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         {
             case "ChannelsItem":
                 var channelsPage = new ChannelsPage();
-                channelsPage.Load(_invokeRequest!);
+                channelsPage.Load(_invokeRequest!, _settings!);
 
                 PageHost.Content = channelsPage;
                 break;

@@ -11,12 +11,37 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         
-        <Button Grid.Row="0" CornerRadius="6" Margin="5,0,0,0" Click="Save" Background="#4d4d4d">
-            <StackPanel Orientation="Horizontal" Spacing="6">
-                <PathIcon Data="{StaticResource save_regular}" />
-                <TextBlock Text="Save"/>
+        <Grid Grid.Row="0" Margin="5,0,5,0" ColumnDefinitions="Auto,*,Auto">
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
+                <Button CornerRadius="6" Click="Save" Background="#4d4d4d">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <PathIcon Data="{StaticResource save_regular}" />
+                        <TextBlock Text="Save"/>
+                    </StackPanel>
+                </Button>
+                <Button CornerRadius="6" Click="Open" Background="#4d4d4d" Margin="16,0,0,0">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <PathIcon Data="{StaticResource folder_regular}" />
+                        <TextBlock Text="Open"/>
+                    </StackPanel>
+                </Button>
             </StackPanel>
-        </Button>
+            
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
+                <Button CornerRadius="6" Click="Update" Background="#4d4d4d">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <PathIcon Data="{StaticResource arrow_download_regular}" />
+                        <TextBlock Text="Update"/>
+                    </StackPanel>
+                </Button>
+                <Button CornerRadius="6" Click="Uninstall" Background="#4d4d4d" Margin="16,0,0,0">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <PathIcon Data="{StaticResource uninstall_app_regular}" />
+                        <TextBlock Text="Uninstall"/>
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Grid>
         
         <DockPanel Grid.Row="1" Margin="20">
             <Grid DockPanel.Dock="Bottom" VerticalAlignment="Bottom" HorizontalAlignment="Left">

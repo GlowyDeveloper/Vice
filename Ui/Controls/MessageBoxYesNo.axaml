@@ -1,0 +1,69 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:Vice.Ui.Controls"
+             Height="200"
+             Width="350"
+             Background="Transparent"
+             TransparencyLevelHint="AcrylicBlur"
+             ExtendClientAreaToDecorationsHint="True"
+             Icon="/Assets/icon.ico"
+             x:DataType="controls:MessageBoxYesNo"
+             x:Class="Vice.Ui.Controls.MessageBoxYesNo"
+             WindowStartupLocation="CenterOwner"
+             x:CompileBindings="True"
+             CanResize="False">
+    <Grid>
+        <ExperimentalAcrylicBorder>
+            <ExperimentalAcrylicBorder.Material>
+                <ExperimentalAcrylicMaterial BackgroundSource="Digger"
+                                             TintColor="Black"
+                                             TintOpacity="0.7"
+                                             MaterialOpacity="0.65"/>
+            </ExperimentalAcrylicBorder.Material>
+        </ExperimentalAcrylicBorder>
+        
+        <Grid RowDefinitions="36,*">
+            <Panel Grid.Row="0" Grid.ColumnSpan="1" Margin="8">
+                <Image Source="/Assets/icon.ico"
+                       Width="18"
+                       Height="18"
+                       Margin="4,4,0,0"
+                       VerticalAlignment="Top"
+                       HorizontalAlignment="Left"/>
+                <TextBlock Text="Vice: MessageBox"
+                           FontSize="16"
+                           Foreground="White"
+                           Margin="32,4,0,0"
+                           VerticalAlignment="Top"
+                           HorizontalAlignment="Left"/>
+            </Panel>
+            
+            <Grid Grid.Row="1">
+                <ExperimentalAcrylicBorder IsHitTestVisible="False"
+                                           CornerRadius="12,0,0,0"
+                                           ClipToBounds="True">
+                    <ExperimentalAcrylicBorder.Material>
+                        <ExperimentalAcrylicMaterial BackgroundSource="Digger"
+                                                     TintColor="Black"
+                                                     TintOpacity="0.9"
+                                                     MaterialOpacity="0.65"/>
+                    </ExperimentalAcrylicBorder.Material>
+                </ExperimentalAcrylicBorder>
+                
+                <DockPanel Margin="5">
+                    <StackPanel Margin="10,0,0,10" Orientation="Horizontal" DockPanel.Dock="Bottom">  
+                        <Button Click="Yes_Clicked" FontSize="16" Margin="0,0,10,0">Yes</Button>
+                        <Button Click="No_Clicked" FontSize="16" Margin="0,0,10,0">No</Button>
+                    </StackPanel>
+
+                    <TextBlock FontSize="24"
+                               Text="{Binding Text}"
+                               TextWrapping="Wrap"
+                               MaxWidth="300"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+                </DockPanel>
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>

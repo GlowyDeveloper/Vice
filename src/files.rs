@@ -4,7 +4,6 @@ use std::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use strum_macros::EnumString;
 use uuid::Uuid;
 use windows::{
     core::{PCWSTR, Interface},
@@ -25,7 +24,7 @@ pub(crate) struct SoundboardSFX {
     pub(crate) keys: Vec<String>
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Clone, EnumString)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
 pub(crate) enum DeviceOrApp {
     Device,
     App
@@ -75,6 +74,16 @@ impl Default for Settings {
 impl Default for DeviceOrApp {
     fn default() -> Self {
         DeviceOrApp::Device
+    }
+}
+
+impl DeviceOrApp {
+    pub(crate) fn from_string(s: &str) -> Self {
+        match s {
+            "Device" => DeviceOrApp::Device,
+            "App" => DeviceOrApp::App,
+            _ => DeviceOrApp::Device, 
+        }
     }
 }
 

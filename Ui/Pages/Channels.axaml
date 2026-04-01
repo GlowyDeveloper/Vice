@@ -93,12 +93,31 @@
                                                 Background="Gray"
                                                 CornerRadius="32"
                                                 Margin="0 64 0 64">
-    
-                                            <Border Background="Green"
-                                                    Width="16"
-                                                    VerticalAlignment="Bottom"
-                                                    Height="64"
-                                                    CornerRadius="32"/>
+                                            <Grid>
+                                                <Border VerticalAlignment="Stretch"
+                                                        CornerRadius="32"
+                                                        RenderTransformOrigin="50%,100%">
+                                                    <Border.Background>
+                                                        <SolidColorBrush Color="{Binding IndicatorColor}">
+                                                            <SolidColorBrush.Transitions>
+                                                                <Transitions>
+                                                                    <ColorTransition Property="Color" Duration="0:0:0.1" />
+                                                                </Transitions>
+                                                            </SolidColorBrush.Transitions>
+                                                        </SolidColorBrush>
+                                                    </Border.Background>
+
+                                                    <Border.RenderTransform>
+                                                        <ScaleTransform ScaleY="{Binding IndicatorVolume}">
+                                                            <ScaleTransform.Transitions>
+                                                                <Transitions>
+                                                                    <DoubleTransition Property="ScaleY" Duration="0:0:0.1" />
+                                                                </Transitions>
+                                                            </ScaleTransform.Transitions>
+                                                        </ScaleTransform>
+                                                    </Border.RenderTransform>
+                                                </Border>
+                                            </Grid>
                                         </Border>
                                             
                                         <Slider Orientation="Vertical"

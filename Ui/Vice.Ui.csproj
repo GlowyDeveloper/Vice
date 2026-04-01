@@ -60,5 +60,13 @@
         <DependentUpon>Sfxs.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
+      <Compile Update="Controls\MessageBoxOk.axaml.cs">
+        <DependentUpon>MessageBoxOk.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
+      <Compile Update="Controls\MessageBoxYesNo.axaml.cs">
+        <DependentUpon>MessageBoxYesNo.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
     </ItemGroup>
 </Project>

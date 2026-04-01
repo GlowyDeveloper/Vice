@@ -92,6 +92,7 @@ impl IpcServer {
 
             if remove {
                 self.clients.swap_remove(i);
+                log!("Client removed");
             } else {
                 i += 1;
             }
@@ -399,7 +400,7 @@ fn handle_request(cmd: &str, args: Value, hotkeys: &mut Hotkeys) -> Value {
                 if let Some(name) = args.get("name").and_then(|v| v.as_str()) {
                     if let Some(deviceapps) = args.get("deviceapps").and_then(|v| v.as_str()) {
                         if let Some(device_str) = args.get("device").and_then(|v| v.as_str()) {
-                            let deviceorapp: DeviceOrApp = device_str.parse().unwrap();
+                            let deviceorapp: DeviceOrApp = DeviceOrApp::from_string(device_str);
                             if let Some(low) = args.get("low").and_then(|v| v.as_bool()) {
                                 let res = funcs::new_channel(
                                     color,
@@ -456,7 +457,7 @@ fn handle_request(cmd: &str, args: Value, hotkeys: &mut Hotkeys) -> Value {
                 if let Some(name) = args.get("name").and_then(|v| v.as_str()) {
                     if let Some(deviceapps) = args.get("deviceapps").and_then(|v| v.as_str()) {
                         if let Some(device_str) = args.get("device").and_then(|v| v.as_str()) {
-                            let deviceorapp: DeviceOrApp = device_str.parse().unwrap();
+                            let deviceorapp: DeviceOrApp = DeviceOrApp::from_string(device_str);
                             if let Some(oldname) = args.get("oldname").and_then(|v| v.as_str()) {
                                 if let Some(low) = args.get("low").and_then(|v| v.as_bool()) {
                                     let res = funcs::edit_channel(
@@ -516,9 +517,6 @@ fn handle_request(cmd: &str, args: Value, hotkeys: &mut Hotkeys) -> Value {
             let res = funcs::delete_sound(name.to_string());
             return json!({"result": res});
         }
-    } else if cmd == "pick_menu_sound" {
-        let sound = funcs::pick_menu_sound();
-        return json!({"result": sound});
     } else if cmd == "get_devices" {
         let devices = funcs::get_devices();
         return json!({"result": devices});
@@ -583,6 +581,12 @@ fn handle_request(cmd: &str, args: Value, hotkeys: &mut Hotkeys) -> Value {
         return json!({"result": res});
     } else if cmd == "update" {
         let res = funcs::update();
+        if let Ok((code, version)) = res {
+            return json!({"result": {"code": code, "version": version}});
+        }
+        return json!({"result": res});
+    } else if cmd == "confirm_update" {
+        let res = funcs::confirm_update();
         return json!({"result": res});
     } else if cmd == "save_blocks" {
         if let Some(item) = args.get("item").and_then(|v| v.as_str()) {
@@ -614,6 +618,9 @@ fn handle_request(cmd: &str, args: Value, hotkeys: &mut Hotkeys) -> Value {
             log::write_debuglog();
             std::process::exit(0);
         }
+    } else if cmd == "get_settings_folder" {
+        let folder = files::app_base();
+        return json!({"result": folder.to_str().unwrap_or_default()});
     }
 
     json!({"result": "null"})
