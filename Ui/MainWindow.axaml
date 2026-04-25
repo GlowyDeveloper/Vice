@@ -109,8 +109,6 @@
                 
                                         <sideitem:SidebarItem x:Name="ChannelsItem" Text=" Channels" Icon="{StaticResource mic_on_regular}"/>
                                         <sideitem:SidebarItem x:Name="SfxsItem" Text=" Sfxs" Icon="{StaticResource music_regular}"/>
-                                        <sideitem:SidebarItem x:Name="EffectsItem" Text=" Effects" Icon="{StaticResource magic_wand_regular}"/>
-                                        <sideitem:SidebarItem x:Name="PerformanceItem" Text=" Performance" Icon="{StaticResource top_speed_regular}"/>
                                     </StackPanel>
                                 </DockPanel>
                             </Grid>

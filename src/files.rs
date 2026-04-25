@@ -1,10 +1,10 @@
 use std::{
-    env, fs, io::Write,
+    env, fs::{self, OpenOptions}, io::Write,
     path::PathBuf, process::Command
 };
+use chrono::Local;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use uuid::Uuid;
 use windows::{
     core::{PCWSTR, Interface},
     Win32::{
@@ -15,22 +15,66 @@ use windows::{
 
 use crate::{error, log, warn};
 
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone, Default)]
+pub(crate) enum EffectsType {
+    #[default]
+    In,
+    Out,
+    
+    Split,
+    Merge,
+    
+    Compression,
+    Delay,
+    Distortion,
+    Gain,
+    Gating,
+    Reverb,
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone, Default)]
+pub(crate) struct EffectNode {
+    pub(crate) x: u32,
+    pub(crate) y: u32,
+    pub(crate) type_of: EffectsType,
+    pub(crate) id: String,
+    pub(crate) inputs: Vec<String>,
+    pub(crate) outputs: Vec<String>,
+    pub(crate) options: Vec<String>
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq, Default, Clone)]
+pub(crate) struct Effects {
+    nodes: Vec<EffectNode>,
+    connections: Vec<EffectsConnection>
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq, Default, Clone)]
+pub(crate) struct EffectsConnection {
+    from_node_id: String,
+    from_port_id: String,
+    to_node_id: String,
+    to_port_id: String
+}
+
 #[derive(Debug, Deserialize, Serialize, PartialEq, Default)]
 pub(crate) struct SoundboardSFX {
     pub(crate) name: String,
     pub(crate) icon: String,
     pub(crate) color: [u8; 3],
     pub(crate) lowlatency: bool,
-    pub(crate) keys: Vec<String>
+    pub(crate) keys: Vec<String>,
+    pub(crate) effects: Effects,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone, Default)]
 pub(crate) enum DeviceOrApp {
+    #[default]
     Device,
     App
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Clone, Default)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Default, Clone)]
 pub(crate) struct Channel {
     pub(crate) name: String,
     pub(crate) icon: String,
@@ -38,7 +82,8 @@ pub(crate) struct Channel {
     pub(crate) device: String,
     pub(crate) deviceorapp: DeviceOrApp,
     pub(crate) lowlatency: bool,
-    pub(crate) volume: f32
+    pub(crate) volume: f32,
+    pub(crate) effects: Effects,
 }
 
 #[derive(Deserialize, Serialize, PartialEq, Clone)]
@@ -71,18 +116,30 @@ impl Default for Settings {
     }
 }
 
-impl Default for DeviceOrApp {
-    fn default() -> Self {
-        DeviceOrApp::Device
-    }
-}
-
 impl DeviceOrApp {
     pub(crate) fn from_string(s: &str) -> Self {
         match s {
             "Device" => DeviceOrApp::Device,
             "App" => DeviceOrApp::App,
             _ => DeviceOrApp::Device, 
+        }
+    }
+}
+
+impl EffectsType {
+    pub(crate) fn from_string(s: &str) -> Self {
+        match s {
+            "In" => EffectsType::In,
+            "Out" => EffectsType::Out,
+            "Split" => EffectsType::Split,
+            "Merge" => EffectsType::Merge,
+            "Compression" => EffectsType::Compression,
+            "Delay" => EffectsType::Delay,
+            "Distortion" => EffectsType::Distortion,
+            "Gain" => EffectsType::Gain,
+            "Gating" => EffectsType::Gating,
+            "Reverb" => EffectsType::Reverb,
+            _ => EffectsType::In, 
         }
     }
 }
@@ -103,10 +160,6 @@ pub(crate) fn app_base() -> PathBuf {
 
 pub(crate) fn sfx_base() -> PathBuf {
     app_base().join("SFXs")
-}
-
-pub(crate) fn blocks_base() -> PathBuf {
-    app_base().join("Blocks")
 }
 
 pub(crate) fn crash_log_base() -> PathBuf {
@@ -149,14 +202,6 @@ pub(crate) fn create_files() {
     if !sfxs_path.exists() {
         if let Err(e) = fs::create_dir_all(sfxs_path) {
             error!("Failed to create soundeffect directory: {}", e);
-        }
-    }
-
-    let blocks_path: PathBuf = blocks_base();
-
-    if !blocks_path.exists() {
-        if let Err(e) = fs::create_dir_all(blocks_path) {
-            error!("Failed to create blocks directory: {}", e);
         }
     }
 
@@ -261,6 +306,10 @@ pub(crate) fn fix_soundeffect(broken: Value) -> SoundboardSFX {
         sfx.keys = keys;
     }
 
+    if let Some(effects) = broken.get("effects") {
+        sfx.effects = fix_effects(effects.clone());
+    }
+
     sfx
 }
 
@@ -321,7 +370,95 @@ pub(crate) fn fix_channel(broken: Value) -> Channel {
         channel.volume = volume as f32;
     }
 
+    if let Some(effects) = broken.get("effects") {
+        channel.effects = fix_effects(effects.clone());
+    }
+
     channel
+}
+
+pub(crate) fn fix_effects(broken: Value) -> Effects {
+    let mut effects: Effects = Effects::default();
+
+    if let Some(nodes_val) = broken.get("nodes").and_then(|v| v.as_array()) {
+        let mut nodes: Vec<EffectNode> = vec![];
+        for broken_node in nodes_val.iter() {
+            let mut node: EffectNode = EffectNode::default();
+
+            if let Some(x) = broken_node.get("x").and_then(|v| v.as_u64()) {
+                node.x = x as u32;
+            }
+
+            if let Some(y) = broken_node.get("y").and_then(|v| v.as_u64()) {
+                node.y = y as u32;
+            }
+
+            if let Some(type_val) = broken_node.get("type_of").and_then(|v| v.as_str()) {
+                node.type_of = EffectsType::from_string(type_val);
+            }
+
+            if let Some(id) = broken_node.get("id").and_then(|v| v.as_str()) {
+                node.id = id.to_string();
+            }
+
+            if let Some(input_val) = broken_node.get("inputs").and_then(|v| v.as_array()) {
+                for input in input_val.iter() {
+                    if let Some(str) = input.as_str() {
+                        node.inputs.push(str.to_string());
+                    }
+                }
+            }
+
+            if let Some(outputs_val) = broken_node.get("outputs").and_then(|v| v.as_array()) {
+                for output in outputs_val.iter() {
+                    if let Some(str) = output.as_str() {
+                        node.outputs.push(str.to_string());
+                    }
+                }
+            }
+
+            if let Some(option_val) = broken_node.get("options").and_then(|v| v.as_array()) {
+                for options in option_val.iter() {
+                    if let Some(str) = options.as_str() {
+                        node.options.push(str.to_string());
+                    }
+                }
+            }
+
+            nodes.push(node);
+        }
+
+        effects.nodes = nodes;
+    }
+
+    if let Some(connections_val) = broken.get("connections").and_then(|v| v.as_array()) {
+        let mut connections: Vec<EffectsConnection> = vec![];
+        for broken_connection in connections_val.iter() {
+            let mut connection: EffectsConnection = EffectsConnection::default();
+
+            if let Some(from_node_id) = broken_connection.get("from_node_id").and_then(|v| v.as_str()) {
+                connection.from_node_id = from_node_id.to_string();
+            }
+
+            if let Some(from_port_id) = broken_connection.get("from_port_id").and_then(|v| v.as_str()) {
+                connection.from_port_id = from_port_id.to_string();
+            }
+
+            if let Some(to_node_id) = broken_connection.get("to_node_id").and_then(|v| v.as_str()) {
+                connection.to_node_id = to_node_id.to_string();
+            }
+
+            if let Some(to_port_id) = broken_connection.get("to_port_id").and_then(|v| v.as_str()) {
+                connection.to_port_id = to_port_id.to_string();
+            }
+
+            connections.push(connection);
+        }
+
+        effects.connections = connections;
+    }
+
+    effects
 }
 
 pub(crate) fn fix_file(broken: Value) -> File {
@@ -449,16 +586,26 @@ pub(crate) fn save_settings(settings: Settings) -> Result<(), String> {
 pub(crate) fn extract_updater(arg: &str, path: PathBuf, debug: &str) -> Result<String, String> {
     let mut temp_path = env::temp_dir();
 
-    let filename = "Vice-Uninstaller-".to_string()+&Uuid::new_v4().to_string()+".exe";
+    let now = Local::now();
+    let formatted = now.format("%d-%m-%Y %H-%M-%S-%f").to_string();
+
+    let filename = "Vice-Uninstaller-".to_string()+&formatted+".exe";
 
     temp_path.push(&filename);
 
-    let mut file = fs::File::create(&temp_path).unwrap();
-    let _ = file.write_all(EMBEDDED_UPDATER);
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&temp_path)
+        .map_err(|e| format!("Failed to create updater file: {}", e))?;
 
-    let _ = Command::new("cmd")
+    file.write_all(EMBEDDED_UPDATER)
+        .map_err(|e| format!("Failed to write updater file: {}", e))?;
+
+    Command::new("cmd")
         .args(["/C", "start", "", &temp_path.to_string_lossy().to_string(), arg, &path.to_string_lossy().to_string(), debug])
-        .spawn();
+        .spawn()
+        .map_err(|e| format!("Failed to run updater file: {}", e))?;
 
     Ok(filename)
 }

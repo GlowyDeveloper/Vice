@@ -1,0 +1,41 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="clr-namespace:Vice.Ui.Controls.Effects.Models"
+             xmlns:local="clr-namespace:Vice.Ui.Controls.Effects"
+             x:Class="Vice.Ui.Controls.Effects.NodeEditor"
+             x:DataType="models:NodeEditorModel"
+             x:CompileBindings="True">
+  
+  <Grid>
+    <ItemsControl ItemsSource="{Binding Nodes}"
+                  HorizontalAlignment="Stretch"
+                  VerticalAlignment="Stretch">
+  
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <Canvas/>
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+  
+      <ItemsControl.ItemContainerTheme>
+        <ControlTheme TargetType="ContentPresenter"
+                      x:DataType="models:NodeControlModel">
+          <Setter Property="Canvas.Left" Value="{Binding X}" />
+          <Setter Property="Canvas.Top" Value="{Binding Y}" />
+          <Setter Property="HorizontalAlignment" Value="Left" />
+          <Setter Property="VerticalAlignment" Value="Top" />
+        </ControlTheme>
+      </ItemsControl.ItemContainerTheme>
+  
+      <ItemsControl.ItemTemplate>
+        <DataTemplate DataType="models:NodeControlModel">
+          <!--EditorVm="{Binding DataContext, RelativeSource={RelativeSource AncestorType=local:NodeEditor}}"/>-->
+          <local:NodeControl
+            EditorVm="{Binding $parent[local:NodeEditor].DataContext}"/>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+    
+    <Canvas Name="ConnectionsLayer" IsHitTestVisible="False" Background="Transparent" />
+  </Grid>
+</UserControl>

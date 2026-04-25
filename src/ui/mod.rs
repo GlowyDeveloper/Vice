@@ -1,4 +1,3 @@
-
 use std::{
     collections::HashMap, io::{Cursor, Read as _, Write as _}, net::{TcpListener, TcpStream}, sync::{Arc, Mutex, atomic::{AtomicBool, Ordering}}
 };
@@ -55,7 +54,7 @@ impl IpcServer {
                 let mut server = IpcServer::new(hotkeys);
                 loop {
                     server.poll();
-                    std::thread::sleep(std::time::Duration::from_millis(50));
+                    std::thread::sleep(std::time::Duration::from_millis(16));
                 }
             })
             .expect("Failed to create IPC thread");
@@ -396,26 +395,17 @@ fn handle_request(cmd: &str, args: Value, hotkeys: &mut Hotkeys) -> Value {
             for (i, val) in col.iter().enumerate() {
                 color[i] = val.as_i64().unwrap_or_default() as u8;
             }
-            if let Some(icon) = args.get("icon").and_then(|v| v.as_str()) {
-                if let Some(name) = args.get("name").and_then(|v| v.as_str()) {
-                    if let Some(deviceapps) = args.get("deviceapps").and_then(|v| v.as_str()) {
-                        if let Some(device_str) = args.get("device").and_then(|v| v.as_str()) {
-                            let deviceorapp: DeviceOrApp = DeviceOrApp::from_string(device_str);
-                            if let Some(low) = args.get("low").and_then(|v| v.as_bool()) {
-                                let res = funcs::new_channel(
-                                    color,
-                                    icon.to_string(),
-                                    name.to_string(),
-                                    deviceapps.to_string(),
-                                    deviceorapp,
-                                    low,
-                                );
-                                return json!({"result": res});
-                            }
-                        }
-                    }
-                }
-            }
+
+            let res = funcs::new_channel(
+                color,
+                args.get("icon").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+                args.get("name").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+                args.get("deviceapps").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+                args.get("device").and_then(|v| v.as_str().and_then(|s| Some(DeviceOrApp::from_string(s)))).unwrap_or_default(),
+                args.get("low").and_then(|v| v.as_bool()).unwrap_or_default(),
+                args.get("effects").and_then(|v| Some(files::fix_effects(v.clone()))).unwrap_or_default()
+            );
+            return json!({"result": res});
         }
     } else if cmd == "new_sound" {
         if let Some(col) = args.get("color").and_then(|v| v.as_array()) {
@@ -423,28 +413,22 @@ fn handle_request(cmd: &str, args: Value, hotkeys: &mut Hotkeys) -> Value {
             for (i, val) in col.iter().enumerate() {
                 color[i] = val.as_i64().unwrap_or_default() as u8;
             }
-            if let Some(icon) = args.get("icon").and_then(|v| v.as_str()) {
-                if let Some(name) = args.get("name").and_then(|v| v.as_str()) {
-                    if let Some(sound) = args.get("sound").and_then(|v| v.as_str()) {
-                        if let Some(low) = args.get("low").and_then(|v| v.as_bool()) {
-                            if let Some(key) = args.get("keys").and_then(|v| v.as_array()) {
-                                let mut keys = Vec::new();
-                                for val in key.iter() {
-                                    keys.push(val.as_str().unwrap_or_default().into());
-                                }
-                                let res = funcs::new_sound(
-                                    color,
-                                    icon.to_string(),
-                                    name.to_string(),
-                                    sound.to_string(),
-                                    low,
-                                    keys
-                                ).map(|_| {hotkeys.register_keybinds()});
-                                return json!({"result": res});
-                            }
-                        }
-                    }
+            if let Some(key) = args.get("keys").and_then(|v| v.as_array()) {
+                let mut keys = Vec::new();
+                for val in key.iter() {
+                    keys.push(val.as_str().unwrap_or_default().into());
                 }
+
+                let res = funcs::new_sound(
+                    color,
+                    args.get("icon").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+                    args.get("name").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+                    args.get("sound").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+                    args.get("low").and_then(|v| v.as_bool()).unwrap_or_default(),
+                    keys,
+                args.get("effects").and_then(|v| Some(files::fix_effects(v.clone()))).unwrap_or_default()
+                ).map(|_| {hotkeys.register_keybinds()});
+                return json!({"result": res});
             }
         }
     } else if cmd == "edit_channel" {
@@ -453,29 +437,18 @@ fn handle_request(cmd: &str, args: Value, hotkeys: &mut Hotkeys) -> Value {
             for (i, val) in col.iter().enumerate() {
                 color[i] = val.as_i64().unwrap_or_default() as u8;
             }
-            if let Some(icon) = args.get("icon").and_then(|v| v.as_str()) {
-                if let Some(name) = args.get("name").and_then(|v| v.as_str()) {
-                    if let Some(deviceapps) = args.get("deviceapps").and_then(|v| v.as_str()) {
-                        if let Some(device_str) = args.get("device").and_then(|v| v.as_str()) {
-                            let deviceorapp: DeviceOrApp = DeviceOrApp::from_string(device_str);
-                            if let Some(oldname) = args.get("oldname").and_then(|v| v.as_str()) {
-                                if let Some(low) = args.get("low").and_then(|v| v.as_bool()) {
-                                    let res = funcs::edit_channel(
-                                        color,
-                                        icon.to_string(),
-                                        name.to_string(),
-                                        deviceapps.to_string(),
-                                        deviceorapp,
-                                        oldname.to_string(),
-                                        low,
-                                    );
-                                    return json!({"result": res});
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+
+            let res = funcs::edit_channel(
+                color,
+                args.get("icon").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+                args.get("name").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+                args.get("deviceapps").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+                args.get("device").and_then(|v| v.as_str().and_then(|s| Some(DeviceOrApp::from_string(s)))).unwrap_or_default(),
+                args.get("oldname").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+                args.get("low").and_then(|v| v.as_bool()).unwrap_or_default(),
+                args.get("effects").and_then(|v| Some(files::fix_effects(v.clone()))).unwrap_or_default()
+            );
+            return json!({"result": res});
         }
     } else if cmd == "edit_sound" {
         if let Some(col) = args.get("color").and_then(|v| v.as_array()) {
@@ -483,28 +456,22 @@ fn handle_request(cmd: &str, args: Value, hotkeys: &mut Hotkeys) -> Value {
             for (i, val) in col.iter().enumerate() {
                 color[i] = val.as_i64().unwrap_or_default() as u8;
             }
-            if let Some(icon) = args.get("icon").and_then(|v| v.as_str()) {
-                if let Some(name) = args.get("name").and_then(|v| v.as_str()) {
-                    if let Some(oldname) = args.get("oldname").and_then(|v| v.as_str()) {
-                        if let Some(low) = args.get("low").and_then(|v| v.as_bool()) {
-                            if let Some(key) = args.get("keys").and_then(|v| v.as_array()) {
-                                let mut keys = Vec::new();
-                                for val in key.iter() {
-                                    keys.push(val.as_str().unwrap_or_default().into());
-                                }
-                                let res = funcs::edit_soundboard(
-                                    color,
-                                    icon.to_string(),
-                                    name.to_string(),
-                                    oldname.to_string(),
-                                    low,
-                                    keys,
-                                ).map(|_| {hotkeys.register_keybinds()});
-                                return json!({"result": res});
-                            }
-                        }
-                    }
+            if let Some(key) = args.get("keys").and_then(|v| v.as_array()) {
+                let mut keys = Vec::new();
+                for val in key.iter() {
+                    keys.push(val.as_str().unwrap_or_default().into());
                 }
+
+                let res = funcs::edit_soundboard(
+                    color,
+                    args.get("icon").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+                    args.get("name").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+                    args.get("sound").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+                    args.get("low").and_then(|v| v.as_bool()).unwrap_or_default(),
+                    keys,
+                    args.get("effects").and_then(|v| Some(files::fix_effects(v.clone()))).unwrap_or_default()
+                ).map(|_| {hotkeys.register_keybinds()});
+                return json!({"result": res});
             }
         }
     } else if cmd == "delete_channel" {
@@ -524,35 +491,16 @@ fn handle_request(cmd: &str, args: Value, hotkeys: &mut Hotkeys) -> Value {
         let apps = funcs::get_apps();
         return json!({"result": apps});
     } else if cmd == "save_settings" {
-        if let Some(output) = args.get("output").and_then(|v| v.as_str()) {
-            if let Some(scale) = args.get("scale").and_then(|v| v.as_f64()) {
-                if let Some(light) = args.get("light").and_then(|v| v.as_bool()) {
-                    if let Some(monitor) = args.get("monitor").and_then(|v| v.as_bool()) {
-                        if let Some(peaks) = args.get("peaks").and_then(|v| v.as_bool()) {
-                            if let Some(startup) = args.get("startup").and_then(|v| v.as_bool()) {
-                                if let Some(tray) = args.get("tray").and_then(|v| v.as_bool()) {
-                                    let res = funcs::save_settings(
-                                        output.to_string(),
-                                        scale as f32,
-                                        light,
-                                        monitor,
-                                        peaks,
-                                        startup,
-                                        tray
-                                    );
-                                    return json!({"result": res});
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    } else if cmd == "get_performance" {
-        let performance = funcs::get_performance();
-        return json!({"result": performance});
-    } else if cmd == "clear_performance" {
-        funcs::clear_performance();
+        let res = funcs::save_settings(
+            args.get("output").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+            args.get("scale").and_then(|v| v.as_f64()).unwrap_or_default() as f32,
+            args.get("light").and_then(|v| v.as_bool()).unwrap_or_default(),
+            args.get("monitor").and_then(|v| v.as_bool()).unwrap_or_default(),
+            args.get("peaks").and_then(|v| v.as_bool()).unwrap_or_default(),
+            args.get("startup").and_then(|v| v.as_bool()).unwrap_or_default(),
+            args.get("tray").and_then(|v| v.as_bool()).unwrap_or_default()
+        );
+        return json!({"result": res});
     } else if cmd == "get_settings" {
         let settings = funcs::get_settings();
         return json!({"result": settings});
@@ -588,17 +536,6 @@ fn handle_request(cmd: &str, args: Value, hotkeys: &mut Hotkeys) -> Value {
     } else if cmd == "confirm_update" {
         let res = funcs::confirm_update();
         return json!({"result": res});
-    } else if cmd == "save_blocks" {
-        if let Some(item) = args.get("item").and_then(|v| v.as_str()) {
-            if let Some(blocks) = args.get("blocks").and_then(|v| v.as_str()) {
-                funcs::save_blocks(item.to_string(), blocks.to_string());
-            }
-        }
-    } else if cmd == "load_blocks" {
-        if let Some(item) = args.get("item").and_then(|v| v.as_str()) {
-            let res = funcs::load_blocks(item.to_string());
-            return json!({"result": res});
-        }
     } else if cmd == "get_version" {
         let version = env!("CARGO_PKG_VERSION");
         return json!({ "result": version });

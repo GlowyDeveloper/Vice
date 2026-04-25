@@ -53,8 +53,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         ChannelsItem.PointerPressed += (_, _) => Navigate(ChannelsItem);
         SfxsItem.PointerPressed += (_, _) => Navigate(SfxsItem);
-        EffectsItem.PointerPressed += (_, _) => Navigate(EffectsItem);
-        PerformanceItem.PointerPressed += (_, _) => Navigate(PerformanceItem);
         SettingsItem.PointerPressed += (_, _) => Navigate(SettingsItem);
         
         Closing += OnClosing;
@@ -74,8 +72,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         ChannelsItem.IsSelected = false;
         SfxsItem.IsSelected = false;
-        EffectsItem.IsSelected = false;
-		PerformanceItem.IsSelected = false;
         SettingsItem.IsSelected = false;
 
         item.IsSelected = true;
@@ -93,12 +89,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 sfxsPage.Load(_invokeRequest!);
 
                 PageHost.Content = sfxsPage;
-                break;
-            case "EffectsItem":
-                PageHost.Content = new EffectsPage();
-                break;
-            case "PerformanceItem":
-                PageHost.Content = new PerformancePage();
                 break;
             case "SettingsItem":
                 var settingsPage = new SettingsPage();

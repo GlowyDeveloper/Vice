@@ -7,11 +7,6 @@ fn main() {
 
     cc::Build::new()
         .cpp(true)
-        .file("src/performance/performance.cpp")
-        .compile("performance");
-    
-    cc::Build::new()
-        .cpp(true)
         .file("src/ui/opener.cpp")
         .compile("open_ui");
 

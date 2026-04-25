@@ -44,10 +44,6 @@
         <DependentUpon>Page.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
-      <Compile Update="Pages\Effects.axaml.cs">
-        <DependentUpon>Effects.axaml</DependentUpon>
-        <SubType>Code</SubType>
-      </Compile>
       <Compile Update="Pages\Performance.axaml.cs">
         <DependentUpon>Performance.axaml</DependentUpon>
         <SubType>Code</SubType>
@@ -67,6 +63,9 @@
       <Compile Update="Controls\MessageBoxYesNo.axaml.cs">
         <DependentUpon>MessageBoxYesNo.axaml</DependentUpon>
         <SubType>Code</SubType>
+      </Compile>
+      <Compile Update="Controls\Effects\Effects.axaml.cs">
+        <DependentUpon>Effects.axaml</DependentUpon>
       </Compile>
     </ItemGroup>
 </Project>

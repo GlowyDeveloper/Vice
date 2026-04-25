@@ -95,6 +95,7 @@ public partial class SfxsPage : UserControl
                     item.lowlatency,
                     item.keys,
                     item.sound,
+                    item.effects,
                     false
                 );
                 Items.Add(itemTemplate);
@@ -131,6 +132,8 @@ public partial class SfxsPage : UserControl
         {
             Editing = true;
             EditedItemTemplate = btn.DataContext as SfxItemTemplate;
+            EffectsUi.Reset();
+            EffectsUi.ConvertJson(EditedItemTemplate!.effects);
         }
     }
     
@@ -144,8 +147,10 @@ public partial class SfxsPage : UserControl
             false,
             [],
             "",
+            new EffectsClass(),
             true
         );
+        EffectsUi.Reset();
     }
     
     private void MoreButton(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
@@ -179,7 +184,7 @@ public partial class SfxsPage : UserControl
         {
             await _invokeRequest!.SendRequestAsync(
                 "new_sound",
-                new Dictionary<string, object> { { "name", EditedItemTemplate.name }, { "icon", EditedItemTemplate.icon }, { "color", parsedColor }, { "low", EditedItemTemplate.lowlatency }, { "keys", parsedKeys }, { "sound", EditedItemTemplate.sound } },
+                new Dictionary<string, object> { { "name", EditedItemTemplate.name }, { "icon", EditedItemTemplate.icon }, { "color", parsedColor }, { "low", EditedItemTemplate.lowlatency }, { "keys", parsedKeys }, { "sound", EditedItemTemplate.sound }, { "effects", EffectsUi.GetCurrentJson() } },
                 false
             );
         }
@@ -187,7 +192,7 @@ public partial class SfxsPage : UserControl
         {
             await _invokeRequest!.SendRequestAsync(
                 "edit_sound",
-                new Dictionary<string, object> { { "name", EditedItemTemplate.name }, { "icon", EditedItemTemplate.icon },  { "color", parsedColor }, { "low", EditedItemTemplate.lowlatency }, { "oldname", EditedItemTemplate.OldName }, { "keys", parsedKeys } },
+                new Dictionary<string, object> { { "name", EditedItemTemplate.name }, { "icon", EditedItemTemplate.icon },  { "color", parsedColor }, { "low", EditedItemTemplate.lowlatency }, { "oldname", EditedItemTemplate.OldName }, { "keys", parsedKeys }, { "effects", EffectsUi.GetCurrentJson() } },
                 false
             );
         }
@@ -260,8 +265,8 @@ public class SfxItemTemplate : SFXClass, INotifyPropertyChanged
     
     private Color _color;
     
-    public SfxItemTemplate(string Nname, string Nicon, List<byte> Ncolor, bool Nlowlatency, List<string> Nkeys, string Nsound, bool NCreatingNew)
-    : base(Nname, Nicon, Ncolor, Nlowlatency, Nkeys, Nsound)
+    public SfxItemTemplate(string Nname, string Nicon, List<byte> Ncolor, bool Nlowlatency, List<string> Nkeys, string Nsound, EffectsClass Neffects, bool NCreatingNew)
+    : base(Nname, Nicon, Ncolor, Nlowlatency, Nkeys, Nsound, Neffects)
     {
         if (Nicon == null || Nicon.Trim() == "" || !(Application.Current?.FindResource(Nicon!) as StreamGeometry is null))
         {

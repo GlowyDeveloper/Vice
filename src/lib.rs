@@ -11,7 +11,6 @@ use tray_icon::menu::MenuEvent;
 
 mod files;
 mod audio;
-mod performance;
 mod ui;
 mod funcs;
 mod log;
@@ -47,7 +46,6 @@ pub fn run() {
     }
 
     audio::start();
-    performance::start();
     files::create_files();
 
     let tray = ui::SystemTray::new();

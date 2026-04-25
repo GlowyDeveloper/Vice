@@ -5,6 +5,7 @@
              xmlns:converters="clr-namespace:Vice.Ui.Converters"
              xmlns:controls="clr-namespace:Vice.Ui.Controls"
              x:DataType="local:ChannelsPage"
+             xmlns:effects="clr-namespace:Vice.Ui.Controls.Effects"
              xmlns:cp="clr-namespace:Avalonia.Controls;assembly=Avalonia.Controls.ColorPicker"
              x:CompileBindings="True">
     
@@ -52,7 +53,8 @@
                                         VerticalAlignment="Stretch"
                                         Width="{Binding ItemsWidth, RelativeSource={RelativeSource AncestorType=local:ChannelsPage}}"
                                         CornerRadius="8"
-                                        Tag="{Binding name}">
+                                        Tag="{Binding name}"
+                                        Margin="4">
                                     <Grid>
                                         <Viewbox Stretch="Uniform"
                                                  HorizontalAlignment="Center"
@@ -276,6 +278,10 @@
                         <TextBlock Text="Low latency mode" FontSize="18" Foreground="White" VerticalAlignment="Center" HorizontalAlignment="Left"/>
                         <ToggleSwitch IsChecked="{Binding EditedItemTemplate.lowlatency}" Margin="0,0,20,0" HorizontalAlignment="Right"/>
                     </Grid>
+                        
+                    <Border Height="20"/>
+                    
+                    <effects:Effects Height="150" HorizontalAlignment="Stretch" x:Name="EffectsUi"/>
                 </StackPanel>
             </DockPanel>
         </Grid>

@@ -19,6 +19,7 @@ public partial class ChannelsPage : UserControl
     private InvokeRequest? _invokeRequest;
     private SettingsClass? _settings;
     private Timer? timer;
+    private bool _isRunning = false;
     
     public static readonly StyledProperty<bool> IsLoadedProperty =
         AvaloniaProperty.Register<ChannelsPage, bool>(nameof(IsLoaded), false);
@@ -62,7 +63,7 @@ public partial class ChannelsPage : UserControl
         InitializeComponent();
     }
 
-    public async void Load(InvokeRequest request, SettingsClass settings)
+    public void Load(InvokeRequest request, SettingsClass settings)
     {
         DataContext = this;
 
@@ -79,15 +80,18 @@ public partial class ChannelsPage : UserControl
 
     private async void Volume(object? state)
     {
+        if (_isRunning) return;
+        _isRunning = true;
+
         try
         {
             foreach (var item in Items)
             {
                 var result = await _invokeRequest!.SendRequestAsync(
                     "get_volume",
-                    new Dictionary<string, object> { { "name", (item.name as string)! } }
+                    new Dictionary<string, object> { { "name", item.name! } }
                 );
-                
+
                 var trimmedResult = result?.Trim().Trim('"');
                 if (float.TryParse(trimmedResult, out float size))
                 {
@@ -101,10 +105,18 @@ public partial class ChannelsPage : UserControl
                 }
             }
         }
+        catch (InvalidOperationException)
+        {
+            return;
+        }
         catch (Exception ex)
         {
             Console.WriteLine($"Volume parsing error: {ex.Message}");
             throw;
+        }
+        finally
+        {
+            _isRunning = false;
         }
     }
     
@@ -152,6 +164,7 @@ public partial class ChannelsPage : UserControl
                     item.deviceOrApp,
                     item.lowlatency,
                     item.volume,
+                    item.effects,
                     false
                 );
                 Items.Add(itemTemplate);
@@ -229,15 +242,16 @@ public partial class ChannelsPage : UserControl
     {
         if (sender is MenuItem btn)
         {
-            Editing = true;
             EditedItemTemplate = btn.DataContext as ChannelItemTemplate;
             GetNewList();
+            EffectsUi.Reset();
+            EffectsUi.ConvertJson(EditedItemTemplate!.effects);
+            Editing = true;
         }
     }
     
     private void NewItem(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        Editing = true;
         EditedItemTemplate = new ChannelItemTemplate(
             "",
             "question_regular",
@@ -246,9 +260,12 @@ public partial class ChannelsPage : UserControl
             DeviceOrApp.Device,
             false,
             1,
+            new EffectsClass(),
             true
         );
         GetNewList();
+        EffectsUi.Reset();
+        Editing = true;
     }
     
     private void MoreButton(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
@@ -289,7 +306,7 @@ public partial class ChannelsPage : UserControl
         {
             await _invokeRequest!.SendRequestAsync(
                 "new_channel",
-                new Dictionary<string, object> { { "name", EditedItemTemplate.name }, { "icon", EditedItemTemplate.icon },  { "color", parsedColor }, { "deviceapps", EditedItemTemplate.device }, { "device", EditedItemTemplate.deviceOrApp.ToString() }, { "low", EditedItemTemplate.lowlatency } },
+                new Dictionary<string, object> { { "name", EditedItemTemplate.name }, { "icon", EditedItemTemplate.icon },  { "color", parsedColor }, { "deviceapps", EditedItemTemplate.device }, { "device", EditedItemTemplate.deviceOrApp.ToString() }, { "low", EditedItemTemplate.lowlatency }, { "effects", EffectsUi.GetCurrentJson() } },
                 false
             );
         }
@@ -297,7 +314,7 @@ public partial class ChannelsPage : UserControl
         {
             await _invokeRequest!.SendRequestAsync(
                 "edit_channel",
-                new Dictionary<string, object> { { "name", EditedItemTemplate.name }, { "icon", EditedItemTemplate.icon },  { "color", parsedColor }, { "deviceapps", EditedItemTemplate.device }, { "device", EditedItemTemplate.deviceOrApp.ToString() }, { "low", EditedItemTemplate.lowlatency }, { "oldname", EditedItemTemplate.OldName } },
+                new Dictionary<string, object> { { "name", EditedItemTemplate.name }, { "icon", EditedItemTemplate.icon },  { "color", parsedColor }, { "deviceapps", EditedItemTemplate.device }, { "device", EditedItemTemplate.deviceOrApp.ToString() }, { "low", EditedItemTemplate.lowlatency }, { "oldname", EditedItemTemplate.OldName }, { "effects", EffectsUi.GetCurrentJson() } },
                 false
             );
         }
@@ -374,8 +391,8 @@ public class ChannelItemTemplate : ChannelsClass, INotifyPropertyChanged
     
     private Color _color;
     
-    public ChannelItemTemplate(string Nname, string Nicon, List<byte> Ncolor, string Ndevice, DeviceOrApp NdeviceOrApp, bool Nlowlatency, double Nvolume, bool NCreatingNew)
-    : base(Nname, Nicon, Ncolor, Ndevice, NdeviceOrApp, Nlowlatency, Nvolume)
+    public ChannelItemTemplate(string Nname, string Nicon, List<byte> Ncolor, string Ndevice, DeviceOrApp NdeviceOrApp, bool Nlowlatency, double Nvolume, EffectsClass Neffects, bool NCreatingNew)
+    : base(Nname, Nicon, Ncolor, Ndevice, NdeviceOrApp, Nlowlatency, Nvolume, Neffects)
     {
         if (Nicon == null || Nicon.Trim() == "" || !(Application.Current?.FindResource(Nicon!) as StreamGeometry is null))
         {

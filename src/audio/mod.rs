@@ -1,8 +1,8 @@
 use std::{
-    ffi::{CStr, CString, c_char}, fs, sync::atomic::{AtomicBool, Ordering}, thread
+    ffi::{CStr, CString, c_char}, sync::atomic::{AtomicBool, Ordering}, thread
 };
 
-use crate::{critical, error, files::{self, Channel, DeviceOrApp}, log};
+use crate::{critical, files::{self, Channel, DeviceOrApp}, log};
 
 #[link(name = "audio")]
 unsafe extern "C" {
@@ -20,7 +20,7 @@ unsafe extern "C" {
 }
 
 fn get_blocks(channel_name: String) -> String {
-    let path: std::path::PathBuf = files::blocks_base().join(format!("{}.json", channel_name));
+    /*let path: std::path::PathBuf = files::blocks_base().join(format!("{}.json", channel_name));
     let mut json_str: String = "[]".to_string();
     if path.exists() {
         match fs::read_to_string(path) {
@@ -62,7 +62,8 @@ fn get_blocks(channel_name: String) -> String {
         parsed = format!("{}\n", parsed);
     }
 
-    parsed
+    parsed*/
+    channel_name
 }
 
 pub(crate) fn outputs() -> Vec<String> {

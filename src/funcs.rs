@@ -2,21 +2,21 @@ use std::path::Path;
 use std::{net::TcpStream, time::Duration, fs};
 use serde::Deserialize;
 
-use crate::files::{self, Channel, DeviceOrApp, Settings, SoundboardSFX};
+use crate::files::{self, Channel, DeviceOrApp, Effects, Settings, SoundboardSFX};
 use crate::audio::{self};
-use crate::{error, performance, warn};
+use crate::error;
 
 static SFX_EXTENTIONS: [&str; 6] = ["wav", "mp3", "wma", "aac", "m4a", "flac"];
 
-pub(crate) fn new_channel(color: [u8; 3], icon: String, name: String, deviceapps: String, device: DeviceOrApp, low: bool) -> Result<(), String> {
-    let channel: Channel = Channel{name, icon, color, device: deviceapps, deviceorapp: device, lowlatency: low, volume: 1.0};
+pub(crate) fn new_channel(color: [u8; 3], icon: String, name: String, deviceapps: String, device: DeviceOrApp, low: bool, effects: Effects) -> Result<(), String> {
+    let channel: Channel = Channel{name, icon, color, device: deviceapps, deviceorapp: device, lowlatency: low, volume: 1.0, effects};
     let mut channels: Vec<Channel> = files::get_channels();
 
     channels.push(channel);
     return files::save_channels(channels).map(|_| audio::restart());
 }
 
-pub(crate) fn new_sound(color: [u8; 3], icon: String, name: String, sound: String, low: bool, keys: Vec<String>) -> Result<(), String> {
+pub(crate) fn new_sound(color: [u8; 3], icon: String, name: String, sound: String, low: bool, keys: Vec<String>, effects: Effects) -> Result<(), String> {
     let mut sfxs: Vec<SoundboardSFX> = files::get_soundboard();
     
     let ext = Path::new(&sound)
@@ -35,18 +35,18 @@ pub(crate) fn new_sound(color: [u8; 3], icon: String, name: String, sound: Strin
         }
     }
 
-    let sfx: SoundboardSFX = SoundboardSFX{name, icon, color, lowlatency: low, keys};
+    let sfx: SoundboardSFX = SoundboardSFX{name, icon, color, lowlatency: low, keys, effects};
 
     sfxs.push(sfx);
     return files::save_soundboard(sfxs);
 }
 
-pub(crate) fn edit_channel(color: [u8; 3], icon: String, name: String, deviceapps: String, device: DeviceOrApp, oldname: String, low: bool) -> Result<(), String> {
+pub(crate) fn edit_channel(color: [u8; 3], icon: String, name: String, deviceapps: String, device: DeviceOrApp, oldname: String, low: bool, effects: Effects) -> Result<(), String> { //
     let mut channels: Vec<Channel> = files::get_channels();
 
     if let Some(pos) = channels.iter().position(|c: &Channel| c.name == oldname) {
         let volume  = channels[pos].volume;
-        channels[pos] = Channel{name, icon, color, device: deviceapps, deviceorapp: device, lowlatency: low, volume};
+        channels[pos] = Channel{name, icon, color, device: deviceapps, deviceorapp: device, lowlatency: low, volume, effects};
     } else {
         error!("Channel \"{}\" not found", name);
         return Err(format!("Channel \"{}\" not found", oldname));
@@ -55,11 +55,11 @@ pub(crate) fn edit_channel(color: [u8; 3], icon: String, name: String, deviceapp
     return files::save_channels(channels).map(|_| audio::restart());
 }
 
-pub(crate) fn edit_soundboard(color: [u8; 3], icon: String, name: String, oldname: String, low: bool, keys: Vec<String>) -> Result<(), String> {
+pub(crate) fn edit_soundboard(color: [u8; 3], icon: String, name: String, oldname: String, low: bool, keys: Vec<String>, effects: Effects) -> Result<(), String> { //
     let mut sfxs: Vec<SoundboardSFX> = files::get_soundboard();
 
     if let Some(pos) = sfxs.iter().position(|c: &SoundboardSFX| c.name == oldname) {
-        sfxs[pos] = SoundboardSFX{name, icon, color, lowlatency: low, keys};
+        sfxs[pos] = SoundboardSFX{name, icon, color, lowlatency: low, keys, effects};
     } else {
         error!("Soundeffect \"{}\" not found", name);
         return Err(format!("Soundeffect \"{}\" not found", oldname));
@@ -127,15 +127,7 @@ pub(crate) fn save_settings(output: String, scale: f32, light: bool, monitor: bo
     settings.startup = startup;
     settings.tray = tray;
 
-    files::save_settings(settings).map(|_| {audio::restart(); performance::change_bool(monitor); files::manage_startup()})
-}
-
-pub(crate) fn get_performance() -> String {
-    serde_json::to_string(&performance::get_data()).unwrap_or_else(|_| "{}".to_string())
-}
-
-pub(crate) fn clear_performance() {
-    performance::clear_data();
+    files::save_settings(settings).map(|_| {audio::restart(); files::manage_startup()})
 }
 
 pub(crate) fn get_settings() -> Settings {
@@ -238,49 +230,4 @@ pub(crate) fn confirm_update() -> Result<String, String> {
     }
 
     return files::extract_updater("update", std::env::current_exe().unwrap(), debug)
-}
-
-pub(crate) fn save_blocks(item: String, blocks: String) {
-    if files::blocks_base().join(format!("{}.json", item)).exists() {
-        if let Err(e) = fs::remove_file(files::blocks_base().join(format!("{}.json", item))) {
-            error!("Failed to remove existing blocks file for item \"{}\": {:#?}", item, e);
-            return;
-        }
-    }
-
-    let pretty: String = match serde_json::from_str::<serde_json::Value>(&blocks) {
-        Ok(v) => match serde_json::to_string_pretty(&v) {
-            Ok(p) => p,
-            Err(e) => {
-                warn!("Failed to make json pretty: {}", e);
-                blocks
-            }
-        },
-        Err(e) => {
-            error!("Failed to parse blocks file: {}", e);
-            blocks
-        }
-    };
-
-    if let Err(e) = fs::write(files::blocks_base().join(format!("{}.json", item)), pretty) {
-        error!("Failed to write blocks file for item \"{}\": {:#?}", item, e);
-        return;
-    }
-
-    audio::restart();
-}
-
-pub(crate) fn load_blocks(item: String) -> String {
-    let path = files::blocks_base().join(format!("{}.json", item));
-    if path.exists() {
-        match fs::read_to_string(path) {
-            Ok(content) => content,
-            Err(e) => {
-                error!("Failed to read blocks file for item \"{}\": {:#?}", item, e);
-                "[]".to_string()
-            }
-        }
-    } else {
-        "[]".to_string()
-    }
 }

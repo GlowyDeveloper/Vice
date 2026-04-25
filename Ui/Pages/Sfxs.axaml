@@ -4,6 +4,7 @@
              xmlns:local="clr-namespace:Vice.Ui.Pages"
              xmlns:converters="clr-namespace:Vice.Ui.Converters"
              xmlns:controls="clr-namespace:Vice.Ui.Controls"
+             xmlns:effects="clr-namespace:Vice.Ui.Controls.Effects"
              x:DataType="local:SfxsPage"
              xmlns:cp="clr-namespace:Avalonia.Controls;assembly=Avalonia.Controls.ColorPicker"
              x:CompileBindings="True">
@@ -230,6 +231,10 @@
                             BorderBrush="White"
                             BorderThickness="1"
                             Click="SoundFile"/>
+                        
+                    <Border Height="20"/>
+                    
+                    <effects:Effects Height="150" HorizontalAlignment="Stretch" x:Name="EffectsUi"/>
                 </StackPanel>
             </DockPanel>
         </Grid>
