@@ -19,7 +19,21 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         
-        <Button Grid.Row="0" CornerRadius="6" Margin="5,0,0,0" Click="NewItem">
+        <Button Grid.Row="0" CornerRadius="6" Margin="5,0,0,0" Click="NewItem" BorderBrush="{DynamicResource Opposite}" BorderThickness="1">
+            <Button.Styles>
+                <Style Selector="Button">
+                    <Setter Property="Background" Value="{DynamicResource NotPressedBrush}"/>
+
+                    <Style Selector="^:pointerover">
+                        <Setter Property="Background" Value="{DynamicResource HoverBrush}"/>
+                    </Style>
+
+                    <Style Selector="^:pressed">
+                        <Setter Property="Background" Value="{DynamicResource PressedBrush}"/>
+                    </Style>
+                </Style>
+            </Button.Styles>
+            
             <StackPanel Orientation="Horizontal" Spacing="6">
                 <PathIcon Data="{StaticResource add_regular}" />
                 <TextBlock Text="New"/>
@@ -33,8 +47,7 @@
                          HorizontalAlignment="Center"
                          VerticalAlignment="Center"
                          IsVisible="{Binding IsLoaded, Converter={StaticResource InverseBoolConverter}}"
-                         IsIndeterminate="True"
-                         Foreground="White"/>
+                         IsIndeterminate="True"/>
             
                 <ScrollViewer>
                     <ItemsControl ItemsSource="{Binding Items}"
@@ -65,7 +78,7 @@
                                                  VerticalAlignment="Bottom"
                                                  Margin="0 0 0 8"
                                                  Height="48">
-                                            <TextBlock Text="{Binding name}"/>
+                                            <TextBlock Text="{Binding name}" Foreground="{Binding LightOrDarkIconColor}"/>
                                         </Viewbox>
                                         
                                         <Viewbox Stretch="Uniform" Margin="60 8 64 40" HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -86,9 +99,9 @@
                                             </Button.ContextMenu>
                                             
                                             <PathIcon Data="{StaticResource more_vertical_regular}"
-                                                      Foreground="White"
                                                       Width="24"
-                                                      Height="24"/>
+                                                      Height="24"
+                                                      Foreground="{Binding LightOrDarkIconColor}"/>
                                         </Button>
                                     </Grid>
                                 </Border>
@@ -105,14 +118,42 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     
-                    <Button Grid.Column="0" CornerRadius="6" Margin="0,0,16,0" Click="SaveButtonClick" Background="#4d4d4d">
+                    <Button Grid.Column="0" CornerRadius="6" Margin="0,0,16,0" Click="SaveButtonClick" BorderBrush="{DynamicResource Opposite}" BorderThickness="1">
+                        <Button.Styles>
+                            <Style Selector="Button">
+                                <Setter Property="Background" Value="{DynamicResource NotPressedBrush}"/>
+
+                                <Style Selector="^:pointerover">
+                                    <Setter Property="Background" Value="{DynamicResource HoverBrush}"/>
+                                </Style>
+
+                                <Style Selector="^:pressed">
+                                    <Setter Property="Background" Value="{DynamicResource PressedBrush}"/>
+                                </Style>
+                            </Style>
+                        </Button.Styles>
+                        
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <PathIcon Data="{StaticResource save_regular}" />
                             <TextBlock Text="Save"/>
                         </StackPanel>
                     </Button>
                     
-                    <Button Grid.Column="1" CornerRadius="6" Margin="0,0,16,0" Click="BackButtonClick" Background="#4d4d4d">
+                    <Button Grid.Column="1" CornerRadius="6" Margin="0,0,16,0" Click="BackButtonClick" BorderBrush="{DynamicResource Opposite}" BorderThickness="1">
+                        <Button.Styles>
+                            <Style Selector="Button">
+                                <Setter Property="Background" Value="{DynamicResource NotPressedBrush}"/>
+
+                                <Style Selector="^:pointerover">
+                                    <Setter Property="Background" Value="{DynamicResource HoverBrush}"/>
+                                </Style>
+
+                                <Style Selector="^:pressed">
+                                    <Setter Property="Background" Value="{DynamicResource PressedBrush}"/>
+                                </Style>
+                            </Style>
+                        </Button.Styles>
+                        
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <PathIcon Data="{StaticResource arrow_left_regular}" />
                             <TextBlock Text="Back"/>
@@ -130,8 +171,8 @@
                         <Button Grid.Column="0"
                                 Width="96"
                                 Height="96"
-                                Background="Transparent"
                                 CornerRadius="96"
+                                Background="Transparent"
                                 Margin="0 0 16 0">
                             <Button.Flyout>
                                 <Flyout Placement="Bottom">
@@ -148,27 +189,18 @@
                                 </Flyout>
                             </Button.Flyout>
                             
-                            <PathIcon Data="{StaticResource color_regular}" Foreground="{Binding EditedItemTemplate.Brush}" Width="84" Height="84"></PathIcon>
+                            <PathIcon Data="{StaticResource color_regular}" Width="84" Height="84"></PathIcon>
                         </Button>
                         
-                        <Grid Grid.Column="1">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            
-                            <TextBlock Grid.Column="0" Text="Name" FontSize="18" Foreground="White" Margin="32 0 48 0" VerticalAlignment="Center"/>
-                            
-                            <TextBox Grid.Column="1"
-                                     Text="{Binding EditedItemTemplate.name, Mode=TwoWay}"
-                                     Height="40"
-                                     Background="#4d4d4d"
-                                     Foreground="White"
-                                     BorderBrush="White"
-                                     BorderThickness="1"
-                                     HorizontalAlignment="Stretch"
-                                     CornerRadius="8"/>
-                        </Grid>
+                        <TextBox Grid.Column="1"
+                                 Text="{Binding EditedItemTemplate.name, Mode=TwoWay}"
+                                 Watermark="Name"
+                                 Height="40"
+                                 Background="{DynamicResource NotPressedBrush}"
+                                 BorderBrush="{DynamicResource Opposite}"
+                                 BorderThickness="1"
+                                 HorizontalAlignment="Stretch"
+                                 CornerRadius="8"/>
                     </Grid>
     
                     <Border Height="20"/>
@@ -182,8 +214,8 @@
                         <Button Grid.Column="0"
                                 Width="96"
                                 Height="96"
-                                Background="Transparent"
                                 CornerRadius="96"
+                                Background="Transparent"
                                 Margin="0 0 16 0">
                             <Button.Flyout>
                                 <MenuFlyout>
@@ -191,46 +223,61 @@
                                 </MenuFlyout>
                             </Button.Flyout>
                             
-                            <PathIcon Data="{Binding EditedItemTemplate.Icon}" Foreground="White" Width="84" Height="84"></PathIcon>
+                            <PathIcon Data="{Binding EditedItemTemplate.Icon}" Width="84" Height="84"></PathIcon>
                         </Button>
                         
-                        <Grid Grid.Column="1">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            
-                            <TextBlock Grid.Column="0" Text="KeyBinds" FontSize="18" Foreground="White" Margin="32 0 48 0" VerticalAlignment="Center"/>
-                            
-                            <controls:KeybindListener Grid.Column="1"
-                                                      Background="#4d4d4d"
-                                                      BorderBrush="White"
-                                                      BorderThickness="1"
-                                                      HorizontalAlignment="Stretch"
-                                                      Text="{Binding EditedItemTemplate.KeysText}"
-                                                      Height="40"
-                                                      CornerRadius="8"
-                                                      x:Name="Keybinds"/>
-                        </Grid>
+                        <controls:KeybindListener Grid.Column="1"
+                                                  BorderBrush="{DynamicResource Opposite}"
+                                                  BorderThickness="1"
+                                                  HorizontalAlignment="Stretch"
+                                                  Text="{Binding EditedItemTemplate.KeysText}"
+                                                  Height="40"
+                                                  CornerRadius="8"
+                                                  x:Name="Keybinds"/>
                     </Grid>
                     
                     <Border Height="20"/>
                     
                     <Grid VerticalAlignment="Center">
-                        <TextBlock Text="Low latency mode" FontSize="18" Foreground="White" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                        <TextBlock Text="Low latency mode" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Left"/>
                         <ToggleSwitch IsChecked="{Binding EditedItemTemplate.lowlatency}" Margin="0,0,20,0" HorizontalAlignment="Right"/>
                     </Grid>
                     
                     <Border Height="20"/>
                     
                     <Button Height="40"
-                            Background="#4d4d4d"
                             CornerRadius="8"
                             HorizontalAlignment="Stretch"
-                            Content="{Binding EditedItemTemplate.sound}"
-                            BorderBrush="White"
+                            BorderBrush="{DynamicResource Opposite}"
                             BorderThickness="1"
-                            Click="SoundFile"/>
+                            Click="SoundFile">
+                        <Button.Styles>
+                            <Style Selector="Button">
+                                <Setter Property="Background" Value="{DynamicResource NotPressedBrush}"/>
+
+                                <Style Selector="^:pointerover">
+                                    <Setter Property="Background" Value="{DynamicResource HoverBrush}"/>
+                                </Style>
+
+                                <Style Selector="^:pressed">
+                                    <Setter Property="Background" Value="{DynamicResource PressedBrush}"/>
+                                </Style>
+                            </Style>
+                        </Button.Styles>
+                        
+                        <Grid>
+                            <TextBlock x:Name="AudioFileText"
+                                       Text="Click to select an audio file"
+                                       FontSize="18"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Center"
+                                       IsVisible="{Binding EditedItemTemplate.IsVolumeVisible, Converter={StaticResource InverseBoolConverter}}"/>
+                            <Grid x:Name="VolumeIndicatorFile"
+                                  ColumnDefinitions="*,*,*,*,*,*,*,*,*,*,*,*,*,*,*,*,*,*,*,*"
+                                  IsVisible="{Binding EditedItemTemplate.IsVolumeVisible}"></Grid>
+                        </Grid>
+                        
+                    </Button>
                         
                     <Border Height="20"/>
                     

@@ -5,7 +5,7 @@
              x:DataType="models:NodeControlModel"
              x:CompileBindings="True">
 
-  <Border Background="#2b2b2b" CornerRadius="6">
+  <Border Background="{DynamicResource NotPressedBrush}" CornerRadius="6">
     <Grid>
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="Auto"/>
@@ -18,7 +18,7 @@
           <ItemsControl.ItemTemplate>
             <DataTemplate>
               <StackPanel Orientation="Horizontal">
-                <Ellipse Width="10" Height="10" Fill="#888" Margin="4"/>
+                <Ellipse Width="10" Height="10" Fill="{DynamicResource PressedBrush}" Margin="4"/>
                 <TextBlock Text="{Binding Label}"/>
               </StackPanel>
             </DataTemplate>
@@ -27,14 +27,17 @@
       </StackPanel>
 
       <StackPanel Grid.Column="1" Margin="6" HorizontalAlignment="Center" VerticalAlignment="Center">
-        <TextBlock Text="{Binding Title}" Foreground="White" FontWeight="Bold" HorizontalAlignment="Center"/>
+        <TextBlock Text="{Binding Title}" FontWeight="Bold" HorizontalAlignment="Center"/>
         <StackPanel Spacing="6" HorizontalAlignment="Center">
           <ItemsControl ItemsSource="{Binding Options}">
             <ItemsControl.ItemTemplate>
               <DataTemplate>
                 <TextBox Text="{Binding CurrentInput}"
                          Watermark="{Binding Title}"
-                         Foreground="White"
+                         Background="{DynamicResource NotPressedBrush}"
+                         BorderBrush="{DynamicResource Opposite}"
+                         BorderThickness="1"
+                         CornerRadius="8"
                          Margin="8 4 8 0"/>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
@@ -48,7 +51,7 @@
             <DataTemplate>
               <StackPanel Orientation="Horizontal">
                 <TextBlock Text="{Binding Label}"/>
-                <Ellipse Width="10" Height="10" Fill="#888" Margin="4"/>
+                <Ellipse Width="10" Height="10" Fill="{DynamicResource PressedBrush}" Margin="4"/>
               </StackPanel>
             </DataTemplate>
           </ItemsControl.ItemTemplate>

@@ -29,9 +29,8 @@
   
       <ItemsControl.ItemTemplate>
         <DataTemplate DataType="models:NodeControlModel">
-          <!--EditorVm="{Binding DataContext, RelativeSource={RelativeSource AncestorType=local:NodeEditor}}"/>-->
           <local:NodeControl
-            EditorVm="{Binding $parent[local:NodeEditor].DataContext}"/>
+            EditorVm="{Binding DataContext, RelativeSource={RelativeSource AncestorType=local:NodeEditor}}"/>
         </DataTemplate>
       </ItemsControl.ItemTemplate>
     </ItemsControl>

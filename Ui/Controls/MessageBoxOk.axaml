@@ -15,8 +15,8 @@
         <ExperimentalAcrylicBorder>
             <ExperimentalAcrylicBorder.Material>
                 <ExperimentalAcrylicMaterial BackgroundSource="Digger"
-                                             TintColor="Black"
-                                             TintOpacity="0.7"
+                                             TintColor="{DynamicResource Color}"
+                                             TintOpacity="{DynamicResource TintOpacity}"
                                              MaterialOpacity="0.65"/>
             </ExperimentalAcrylicBorder.Material>
         </ExperimentalAcrylicBorder>
@@ -31,7 +31,6 @@
                        HorizontalAlignment="Left"/>
                 <TextBlock Text="Vice: MessageBox"
                            FontSize="16"
-                           Foreground="White"
                            Margin="32,4,0,0"
                            VerticalAlignment="Top"
                            HorizontalAlignment="Left"/>
@@ -43,14 +42,30 @@
                                            ClipToBounds="True">
                     <ExperimentalAcrylicBorder.Material>
                         <ExperimentalAcrylicMaterial BackgroundSource="Digger"
-                                                     TintColor="Black"
+                                                     TintColor="{DynamicResource Color}"
                                                      TintOpacity="0.9"
                                                      MaterialOpacity="0.65"/>
                     </ExperimentalAcrylicBorder.Material>
                 </ExperimentalAcrylicBorder>
                 
                 <DockPanel Margin="5">
-                    <Button DockPanel.Dock="Bottom" Click="Ok_Clicked" FontSize="16" Margin="10,0,0,10">Ok</Button>
+                    <Button DockPanel.Dock="Bottom" Click="Ok_Clicked" FontSize="16" Margin="10,0,0,10" BorderBrush="{DynamicResource Opposite}" BorderThickness="1" CornerRadius="8">
+                        <Button.Styles>
+                            <Style Selector="Button">
+                                <Setter Property="Background" Value="{DynamicResource NotPressedBrush}"/>
+
+                                <Style Selector="^:pointerover">
+                                    <Setter Property="Background" Value="{DynamicResource HoverBrush}"/>
+                                </Style>
+
+                                <Style Selector="^:pressed">
+                                    <Setter Property="Background" Value="{DynamicResource PressedBrush}"/>
+                                </Style>
+                            </Style>
+                        </Button.Styles>
+                        
+                        Ok
+                    </Button>
 
                     <TextBlock FontSize="24"
                                Text="{Binding Text}"

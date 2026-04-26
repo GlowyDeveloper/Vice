@@ -9,6 +9,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using Vice.Ui.Controls;
 using Vice.Ui.Utils;
 
@@ -21,7 +22,7 @@ public partial class SettingsPage : UserControl, INotifyPropertyChanged
     private event EventHandler<SettingsClass>? ReloadWindowSettings;
 
     public new event PropertyChangedEventHandler? PropertyChanged;
-    private void OnPropertyChanged([CallerMemberName] string? propname = null)
+    public void OnPropertyChanged([CallerMemberName] string? propname = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propname));
     
     public ObservableCollection<string> OutputDeviceList { get; set; } = new();
@@ -33,7 +34,7 @@ public partial class SettingsPage : UserControl, INotifyPropertyChanged
         InitializeComponent();
     }
 
-    public async void Load(EventHandler<SettingsClass> func, SettingsClass settings, InvokeRequest invokeRequest)
+    public void Load(EventHandler<SettingsClass> func, SettingsClass settings, InvokeRequest invokeRequest)
     {
         _settings = settings;
         ReloadWindowSettings = func;

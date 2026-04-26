@@ -19,7 +19,21 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         
-        <Button Grid.Row="0" CornerRadius="6" Margin="5,0,0,0" Click="NewItem" Background="#4d4d4d">
+        <Button Grid.Row="0" CornerRadius="6" Margin="5,0,0,0" Click="NewItem" BorderBrush="{DynamicResource Opposite}" BorderThickness="1">
+            <Button.Styles>
+                <Style Selector="Button">
+                    <Setter Property="Background" Value="{DynamicResource NotPressedBrush}"/>
+
+                    <Style Selector="^:pointerover">
+                        <Setter Property="Background" Value="{DynamicResource HoverBrush}"/>
+                    </Style>
+
+                    <Style Selector="^:pressed">
+                        <Setter Property="Background" Value="{DynamicResource PressedBrush}"/>
+                    </Style>
+                </Style>
+            </Button.Styles>
+
             <StackPanel Orientation="Horizontal" Spacing="6">
                 <PathIcon Data="{StaticResource add_regular}" />
                 <TextBlock Text="New"/>
@@ -33,8 +47,7 @@
                          HorizontalAlignment="Center"
                          VerticalAlignment="Center"
                          IsVisible="{Binding IsLoaded, Converter={StaticResource InverseBoolConverter}}"
-                         IsIndeterminate="True"
-                         Foreground="White"/>
+                         IsIndeterminate="True"/>
             
                 <ScrollViewer HorizontalScrollBarVisibility="Auto"
                               VerticalScrollBarVisibility="Disabled">
@@ -61,15 +74,15 @@
                                                  VerticalAlignment="Bottom"
                                                  Margin="0 0 0 8"
                                                  Height="48">
-                                            <TextBlock Text="{Binding name}"/>
+                                            <TextBlock Text="{Binding name}" Foreground="{Binding LightOrDarkIconColor}"/>
                                         </Viewbox>
                                         
                                         <PathIcon Data="{Binding Icon}"
-                                                  Foreground="White"
                                                   Width="32"
                                                   Height="32"
                                                   HorizontalAlignment="Center"
                                                   VerticalAlignment="Top"
+                                                  Foreground="{Binding LightOrDarkIconColor}"
                                                   Margin="0 16 0 0"/>
                                         
                                         <Button HorizontalAlignment="Right"
@@ -85,9 +98,9 @@
                                             </Button.ContextMenu>
                                             
                                             <PathIcon Data="{StaticResource more_vertical_regular}"
-                                                      Foreground="White"
                                                       Width="24"
-                                                      Height="24"/>
+                                                      Height="24"
+                                                      Foreground="{Binding LightOrDarkIconColor}"/>
                                         </Button>
                                         
                                         <Border VerticalAlignment="Stretch"
@@ -152,14 +165,42 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     
-                    <Button Grid.Column="0" CornerRadius="6" Margin="0,0,16,0" Click="SaveButtonClick" Background="#4d4d4d">
+                    <Button Grid.Column="0" CornerRadius="6" Margin="0,0,16,0" Click="SaveButtonClick" BorderBrush="{DynamicResource Opposite}" BorderThickness="1">
+                        <Button.Styles>
+                            <Style Selector="Button">
+                                <Setter Property="Background" Value="{DynamicResource NotPressedBrush}"/>
+
+                                <Style Selector="^:pointerover">
+                                    <Setter Property="Background" Value="{DynamicResource HoverBrush}"/>
+                                </Style>
+
+                                <Style Selector="^:pressed">
+                                    <Setter Property="Background" Value="{DynamicResource PressedBrush}"/>
+                                </Style>
+                            </Style>
+                        </Button.Styles>
+
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <PathIcon Data="{StaticResource save_regular}" />
                             <TextBlock Text="Save"/>
                         </StackPanel>
                     </Button>
                     
-                    <Button Grid.Column="1" CornerRadius="6" Margin="0,0,16,0" Click="BackButtonClick" Background="#4d4d4d">
+                    <Button Grid.Column="1" CornerRadius="6" Margin="0,0,16,0" Click="BackButtonClick" BorderBrush="{DynamicResource Opposite}" BorderThickness="1">
+                        <Button.Styles>
+                            <Style Selector="Button">
+                                <Setter Property="Background" Value="{DynamicResource NotPressedBrush}"/>
+
+                                <Style Selector="^:pointerover">
+                                    <Setter Property="Background" Value="{DynamicResource HoverBrush}"/>
+                                </Style>
+
+                                <Style Selector="^:pressed">
+                                    <Setter Property="Background" Value="{DynamicResource PressedBrush}"/>
+                                </Style>
+                            </Style>
+                        </Button.Styles>
+
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <PathIcon Data="{StaticResource arrow_left_regular}" />
                             <TextBlock Text="Back"/>
@@ -198,24 +239,16 @@
                             <PathIcon Data="{StaticResource color_regular}" Foreground="{Binding EditedItemTemplate.Brush}" Width="84" Height="84"></PathIcon>
                         </Button>
                         
-                        <Grid Grid.Column="1">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            
-                            <TextBlock Grid.Column="0" Text="Name" FontSize="18" Foreground="White" Margin="32 0 48 0" VerticalAlignment="Center"/>
-                            
-                            <TextBox Grid.Column="1" x:Name="NameTextBox"
-                                     Text="{Binding EditedItemTemplate.name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                     Height="40"
-                                     Background="#4d4d4d"
-                                     Foreground="White"
-                                     BorderBrush="White"
-                                     BorderThickness="1"
-                                     HorizontalAlignment="Stretch"
-                                     CornerRadius="8"/>
-                        </Grid>
+                        <TextBox Grid.Column="1"
+                                 x:Name="NameTextBox"
+                                 Text="{Binding EditedItemTemplate.name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 Height="40"
+                                 Watermark="Name"
+                                 Background="{DynamicResource NotPressedBrush}"
+                                 BorderBrush="{DynamicResource Opposite}"
+                                 BorderThickness="1"
+                                 HorizontalAlignment="Stretch"
+                                 CornerRadius="8"/>
                     </Grid>
     
                     <Border Height="20"/>
@@ -234,15 +267,31 @@
                                 </MenuFlyout>
                             </Button.Flyout>
                             
-                            <PathIcon Data="{Binding EditedItemTemplate.Icon}" Foreground="White" Width="84" Height="84"></PathIcon>
+                            <PathIcon Data="{Binding EditedItemTemplate.Icon}" Width="84" Height="84"></PathIcon>
                         </Button>
                         
                         <Button Grid.Column="1"
                                 Content="{Binding EditedItemTemplate.device}"
                                 Height="40"
                                 HorizontalAlignment="Stretch"
-                                Margin="16 0 16 0"
-                                Background="Transparent">
+                                BorderBrush="{DynamicResource Opposite}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Margin="16 0 16 0">
+                            <Button.Styles>
+                                <Style Selector="Button">
+                                    <Setter Property="Background" Value="{DynamicResource NotPressedBrush}"/>
+
+                                    <Style Selector="^:pointerover">
+                                        <Setter Property="Background" Value="{DynamicResource HoverBrush}"/>
+                                    </Style>
+
+                                    <Style Selector="^:pressed">
+                                        <Setter Property="Background" Value="{DynamicResource PressedBrush}"/>
+                                    </Style>
+                                </Style>
+                            </Button.Styles>
+
                             <Button.Flyout>
                                 <MenuFlyout ItemsSource="{Binding DeviceAndAppList}">
                                     <MenuFlyout.ItemTemplate>
@@ -260,9 +309,25 @@
                         
                         <Button Grid.Column="2"
                                 Content="{Binding EditedItemTemplate.DeviceOrAppParsed}"
+                                BorderBrush="{DynamicResource Opposite}"
+                                BorderThickness="1"
+                                CornerRadius="8"
                                 Height="40"
-                                HorizontalAlignment="Stretch"
-                                Background="Transparent">
+                                HorizontalAlignment="Stretch">
+                            <Button.Styles>
+                                <Style Selector="Button">
+                                    <Setter Property="Background" Value="{DynamicResource NotPressedBrush}"/>
+
+                                    <Style Selector="^:pointerover">
+                                        <Setter Property="Background" Value="{DynamicResource HoverBrush}"/>
+                                    </Style>
+
+                                    <Style Selector="^:pressed">
+                                        <Setter Property="Background" Value="{DynamicResource PressedBrush}"/>
+                                    </Style>
+                                </Style>
+                            </Button.Styles>
+
                             <Button.Flyout>
                                 <MenuFlyout>
                                     <MenuItem Header="Capture Device" Click="CaptureDeviceItem"/>
@@ -275,7 +340,7 @@
                     <Border Height="20"/>
                     
                     <Grid VerticalAlignment="Center">
-                        <TextBlock Text="Low latency mode" FontSize="18" Foreground="White" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                        <TextBlock Text="Low latency mode" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Left"/>
                         <ToggleSwitch IsChecked="{Binding EditedItemTemplate.lowlatency}" Margin="0,0,20,0" HorizontalAlignment="Right"/>
                     </Grid>
                         

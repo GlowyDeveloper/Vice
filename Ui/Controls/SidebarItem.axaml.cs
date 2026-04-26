@@ -8,7 +8,7 @@ public partial class SidebarItem : UserControl
 {
     public static readonly StyledProperty<string> TextProperty =
         AvaloniaProperty.Register<SidebarItem, string>(nameof(Text));
-    
+
     public static readonly StyledProperty<Geometry> IconProperty =
         AvaloniaProperty.Register<SidebarItem, Geometry>(nameof(Icon));
 
@@ -18,31 +18,12 @@ public partial class SidebarItem : UserControl
     public SidebarItem()
     {
         InitializeComponent();
-        
+
         this.PropertyChanged += (_, e) =>
         {
             if (e.Property == IsSelectedProperty)
             {
-                Root.Background = IsSelected
-                    ? new SolidColorBrush(Color.Parse("#2A2A2A"))
-                    : new SolidColorBrush(Colors.Transparent);
-            }
-        };
-
-        Root.PointerMoved += (_, _) =>
-        {
-            Root.Background = new SolidColorBrush(Color.Parse("#2A2A2A"));
-        };
-
-        Root.PointerExited += (_, _) =>
-        {
-            if (GetValue(IsSelectedProperty))
-            {
-                Root.Background = new SolidColorBrush(Color.Parse("#2A2A2A"));
-            }
-            else
-            {
-                Root.Background = new SolidColorBrush(Colors.Transparent);
+                Root.Classes.Set("selected", IsSelected);
             }
         };
     }
