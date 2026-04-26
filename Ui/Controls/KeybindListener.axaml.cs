@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -14,7 +15,7 @@ public partial class KeybindListener : Border
         AvaloniaProperty.Register<KeybindListener, KeyGesture?>(nameof(KeyGesture));
     
     public static readonly StyledProperty<string> TextProperty = 
-        AvaloniaProperty.Register<KeybindListener, string>(nameof(Text), "Click to bind");
+        AvaloniaProperty.Register<KeybindListener, string>(nameof(Text), "Click to add a keybind");
 
     public string Text
     {

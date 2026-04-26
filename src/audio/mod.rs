@@ -11,6 +11,7 @@ unsafe extern "C" {
     fn get_outputs(len: *mut usize) -> *const *const c_char;
     fn get_inputs(len: *mut usize) -> *const *const c_char;
     fn get_apps(len: *mut usize) -> *const *const c_char;
+    fn get_sfx_peaks(len: *mut usize, file: *const c_char) -> *const *const c_char;
     fn play_sound(file: *const c_char, device_name: *const c_char, low_latency: bool, path: *const c_char);
     fn device_to_device(input: *const c_char, output: *const c_char, low_latency: bool, channel_name: *const c_char, path: *const c_char);
     fn app_to_device(input: *const c_char, output: *const c_char, low_latency: bool, channel_name: *const c_char, path: *const c_char);
@@ -119,6 +120,22 @@ pub(crate) fn apps() -> Vec<String> {
     unsafe {
         let mut len: usize = 0;
         let apps: *const *const c_char = get_apps(&mut len as *mut usize);
+
+        let slice = std::slice::from_raw_parts(apps, len);
+
+        slice.iter()
+            .map(|&cstr_ptr| {
+                CStr::from_ptr(cstr_ptr).to_string_lossy().into_owned()
+            })
+            .collect()
+    }
+}
+
+pub(crate) fn get_peaks(file_path: String) -> Vec<String> {
+    unsafe {
+        let mut len: usize = 0;
+        let path_cstr: CString = CString::new(file_path).unwrap();
+        let apps: *const *const c_char = get_sfx_peaks(&mut len as *mut usize, path_cstr.as_ptr());
 
         let slice = std::slice::from_raw_parts(apps, len);
 

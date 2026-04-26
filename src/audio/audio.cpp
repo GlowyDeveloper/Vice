@@ -344,15 +344,86 @@ extern "C" {
     }
 
     void find_volume(const char* channel_name, float* buffer, size_t sampleCount) {
-        float peak = 0.0f;
-        for (size_t i = 0; i < sampleCount; ++i) {
-            float v = std::fabs(buffer[i]);
-            if (v > peak)
-                peak = v;
+        if (sampleCount == 0) {
+            volume_display[channel_name] = 0.0f;
+            return;
         }
-        volume_display[channel_name] = std::min(peak * 2.0f, 2.0f);
+
+        float sum = 0.0f;
+        for (size_t i = 0; i < sampleCount; ++i) {
+            float v = buffer[i];
+            sum += v * v;
+        }
+
+        float rms = std::sqrt(sum / sampleCount);
+        volume_display[channel_name] = std::min(rms * 2.0f, 2.0f);
     }
     
+    const char** get_sfx_peaks(size_t* len, const char* file) {
+        PCMResult result = loadPCM(file);
+        if (result.result != 0) {
+            if (result.result == 1) {
+                std::string msg = std::string("Failed to load \"") + file + "\": Unrecognized file format";
+                error(msg.c_str());
+            } else {
+                std::string msg = std::string("Failed to load \"") + file + "\": File doesn't exist or the file is in use";
+                error(msg.c_str());
+            }
+            *len = 0;
+            return nullptr;
+        }
+
+        PCMData pcm = result.pcm;
+        if (!pcm.buffer) {
+            std::string msg = std::string("Failed to load \"") + file + "\": No audio data";
+            error(msg.c_str());
+            *len = 0;
+            return nullptr;
+        }
+        if (pcm.channels <= 0) {
+            std::string msg = std::string("Failed to load \"") + file + "\": No channels";
+            error(msg.c_str());
+            *len = 0;
+            return nullptr;
+        }
+
+        int16_t* samples = reinterpret_cast<int16_t*>(pcm.buffer);
+        size_t totalSamples = pcm.bufferSize / sizeof(int16_t);
+        size_t frames = totalSamples / pcm.channels;
+
+        size_t numSegments = 50;
+        size_t samplesPerSegment = frames / numSegments;
+
+        for (size_t seg = 0; seg < numSegments; ++seg) {
+            float sum = 0.0f;
+            size_t count = 0;
+
+            size_t start = seg * samplesPerSegment;
+            size_t end = (seg + 1) * samplesPerSegment;
+
+            for (size_t i = start; i < end; ++i) {
+                for (int ch = 0; ch < pcm.channels; ++ch) {
+                    size_t idx = i * pcm.channels + ch;
+
+                    float v = samples[idx] / 32768.0f;
+                    sum += v * v;
+                    count++;
+                }
+            }
+
+            float rms = (count > 0) ? std::sqrt(sum / count) : 0.0f;
+
+            storage.push_back(std::to_string(rms));
+        }
+
+        for (auto& s : storage) {
+            c_strs.push_back(s.c_str());
+        }
+
+        clear_statics();
+        *len = c_strs.size();
+        return c_strs.data();
+    }
     #pragma endregion
     #pragma region Get Outputs
     const char** get_outputs(size_t* len) {

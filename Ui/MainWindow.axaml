@@ -18,8 +18,8 @@
         <ExperimentalAcrylicBorder IsHitTestVisible="False">
             <ExperimentalAcrylicBorder.Material>
                 <ExperimentalAcrylicMaterial BackgroundSource="Digger"
-                                             TintColor="{Binding Color}"
-                                             TintOpacity="0.7"
+                                             TintColor="{DynamicResource Color}"
+                                             TintOpacity="{DynamicResource TintOpacity}"
                                              MaterialOpacity="0.65"/>
             </ExperimentalAcrylicBorder.Material>
         </ExperimentalAcrylicBorder>
@@ -36,7 +36,6 @@
                        HorizontalAlignment="Left"/>
                 <TextBlock Text="Vice"
                            FontSize="16"
-                           Foreground="White"
                            Margin="32,4,0,0"
                            VerticalAlignment="Top"
                            HorizontalAlignment="Left"/>
@@ -62,7 +61,7 @@
                                                    Grid.Column="1">
                             <ExperimentalAcrylicBorder.Material>
                                 <ExperimentalAcrylicMaterial BackgroundSource="Digger"
-                                                             TintColor="{Binding Color}"
+                                                             TintColor="{DynamicResource Color}"
                                                              TintOpacity="0.9"
                                                              MaterialOpacity="0.65"/>
                             </ExperimentalAcrylicBorder.Material>
@@ -90,8 +89,8 @@
                                 <ExperimentalAcrylicBorder IsHitTestVisible="False">
                                     <ExperimentalAcrylicBorder.Material>
                                         <ExperimentalAcrylicMaterial BackgroundSource="Digger"
-                                                                     TintColor="{Binding Color}"
-                                                                     TintOpacity="0.7"
+                                                                     TintColor="{DynamicResource Color}"
+                                                                     TintOpacity="{DynamicResource TintOpacity}"
                                                                      MaterialOpacity="0.65"/>
                                     </ExperimentalAcrylicBorder.Material>
                                 </ExperimentalAcrylicBorder>
@@ -103,12 +102,18 @@
                                                           Icon="{StaticResource settings_regular}"/>
                                 
                                     <StackPanel Spacing="5">
-                                        <Button x:Name="SidebarOpen" Background="Transparent" Click="TriggerPaneCommand">
-                                            <PathIcon Data="{StaticResource line_horizontal_3_regular}"></PathIcon>
-                                        </Button>
+                                        <sideitem:SidebarItem x:Name="SidebarOpen"
+                                                              Text=""
+                                                              Icon="{StaticResource line_horizontal_3_regular}"
+                                                              HorizontalAlignment="Left"
+                                                              Width="40"/>
                 
-                                        <sideitem:SidebarItem x:Name="ChannelsItem" Text=" Channels" Icon="{StaticResource mic_on_regular}"/>
-                                        <sideitem:SidebarItem x:Name="SfxsItem" Text=" Sfxs" Icon="{StaticResource music_regular}"/>
+                                        <sideitem:SidebarItem x:Name="ChannelsItem"
+                                                              Text=" Channels"
+                                                              Icon="{StaticResource mic_on_regular}"/>
+                                        <sideitem:SidebarItem x:Name="SfxsItem"
+                                                              Text=" Sfxs"
+                                                              Icon="{StaticResource music_regular}"/>
                                     </StackPanel>
                                 </DockPanel>
                             </Grid>

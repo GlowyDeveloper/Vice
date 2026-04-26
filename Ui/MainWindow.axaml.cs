@@ -6,6 +6,7 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using System.Text.Json;
+using Avalonia.Styling;
 using Vice.Ui.Controls;
 using Vice.Ui.Pages;
 using Vice.Ui.Utils;
@@ -35,7 +36,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         {
             _invokeRequest = new InvokeRequest();
             var result = await _invokeRequest.SendRequestAsync("get_settings");
-            _settings = JsonSerializer.Deserialize(result, JsonContext.Default.SettingsClass)!;
+            Reload(null, JsonSerializer.Deserialize(result, JsonContext.Default.SettingsClass)!);
         }
         catch (Exception ex)
         {
@@ -54,6 +55,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         ChannelsItem.PointerPressed += (_, _) => Navigate(ChannelsItem);
         SfxsItem.PointerPressed += (_, _) => Navigate(SfxsItem);
         SettingsItem.PointerPressed += (_, _) => Navigate(SettingsItem);
+        SidebarOpen.PointerPressed += (_, _) => TriggerPaneCommand();
         
         Closing += OnClosing;
     }
@@ -63,7 +65,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         await _invokeRequest!.SendRequestAsync("quit", null, false);
     }
     
-    private void TriggerPaneCommand(object? sender, RoutedEventArgs e)
+    private void TriggerPaneCommand()
     {
         IsPaneOpen = !IsPaneOpen;
     }
@@ -102,8 +104,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     public void Reload(object? _, SettingsClass settings)
     {
         _settings = settings;
+        Application.Current!.RequestedThemeVariant =
+            _settings.light ? ThemeVariant.Light : ThemeVariant.Dark;
+        
         OnPropertyChanged(nameof(Scale));
-        OnPropertyChanged(nameof(Color));
     }
 
     public bool IsPaneOpen
@@ -115,14 +119,5 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     public double Scale
     {
         get => Math.Clamp(_settings!.scale, 0.1, 2.0);
-    }
-    
-    public Color Color
-    {
-        get
-        {
-            if (_settings == null) return Colors.Transparent;
-            return _settings.light ? Colors.White : Colors.Black;
-        }
     }
 }

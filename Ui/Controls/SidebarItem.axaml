@@ -4,10 +4,34 @@
              x:Class="Vice.Ui.Controls.SidebarItem"
              x:CompileBindings="True">
 
-    <Border x:Name="Root" CornerRadius="6" Padding="10" Background="Transparent">
+    <Border x:Name="Root" CornerRadius="6" Padding="10">
+        <Border.Transitions>
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.1"/>
+            </Transitions>
+        </Border.Transitions>
+
+        <Border.Styles>
+            <Style Selector="Border#Root">
+                <Setter Property="Background" Value="#00000000"/>
+
+                <Style Selector="^:pointerover">
+                    <Setter Property="Background" Value="{DynamicResource HoverBrush}"/>
+                </Style>
+
+                <Style Selector="^:pressed">
+                    <Setter Property="Background" Value="{DynamicResource PressedBrush}"/>
+                </Style>
+
+                <Style Selector="^.selected">
+                    <Setter Property="Background" Value="{DynamicResource PressedBrush}"/>
+                </Style>
+            </Style>
+        </Border.Styles>
+
         <StackPanel Orientation="Horizontal" Spacing="8">
-            <PathIcon Data="{Binding Icon, RelativeSource={RelativeSource AncestorType=local:SidebarItem}}" Foreground="White"/>
-            <TextBlock Text="{Binding Text, RelativeSource={RelativeSource AncestorType=local:SidebarItem}}" Foreground="White"/>
+            <PathIcon Data="{Binding Icon, RelativeSource={RelativeSource AncestorType=local:SidebarItem}}"/>
+            <TextBlock Text="{Binding Text, RelativeSource={RelativeSource AncestorType=local:SidebarItem}}"/>
         </StackPanel>
     </Border>
 </UserControl>

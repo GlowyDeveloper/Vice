@@ -14,8 +14,12 @@ using Vice.Ui.Utils;
 
 namespace Vice.Ui.Pages;
 
-public partial class ChannelsPage : UserControl
+public partial class ChannelsPage : UserControl, INotifyPropertyChanged
 {
+    public new event PropertyChangedEventHandler? PropertyChanged;
+    public void OnPropertyChanged([CallerMemberName] string? propname = null)
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propname));
+    
     private InvokeRequest? _invokeRequest;
     private SettingsClass? _settings;
     private Timer? timer;
@@ -432,6 +436,7 @@ public class ChannelItemTemplate : ChannelsClass, INotifyPropertyChanged
             _color = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(Brush));
+            OnPropertyChanged(nameof(LightOrDarkIconColor));
         }
     }
     public string OldName { get; set; }
@@ -445,6 +450,17 @@ public class ChannelItemTemplate : ChannelsClass, INotifyPropertyChanged
             if (IndicatorVolume <= 0.6) return Colors.Orange;
             if (IndicatorVolume <= 0.8) return Colors.OrangeRed;
             return Colors.Red; 
+        }
+    }
+    public Brush LightOrDarkIconColor
+    {
+        get
+        {
+            double luminance = 0.299 * _color.R + 0.587 * _color.G + 0.114 * _color.B;
+
+            return luminance > 145 
+                ? new SolidColorBrush(Colors.Black)
+                : new SolidColorBrush(Colors.White);
         }
     }
 }

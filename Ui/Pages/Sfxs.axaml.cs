@@ -11,12 +11,18 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using System.Text.Json;
+using Avalonia.Layout;
+using Avalonia.Threading;
 using Vice.Ui.Utils;
 
 namespace Vice.Ui.Pages;
 
-public partial class SfxsPage : UserControl
+public partial class SfxsPage : UserControl, INotifyPropertyChanged
 {
+    public event PropertyChangedEventHandler? PropertyChanged;
+    public void OnPropertyChanged([CallerMemberName] string? propname = null)
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propname));
+    
     private InvokeRequest? _invokeRequest;
     
     public static readonly StyledProperty<bool> IsLoadedProperty =
@@ -59,7 +65,7 @@ public partial class SfxsPage : UserControl
         InitializeComponent();
     }
 
-    public async void Load(InvokeRequest request)
+    public void Load(InvokeRequest request)
     {
         DataContext = this;
 
@@ -111,6 +117,67 @@ public partial class SfxsPage : UserControl
             IsLoaded = true;
         }
     }
+
+    public async void GenerateVolume()
+    {
+        if (EditedItemTemplate == null)
+        {
+            return;
+        }
+
+        AudioFileText.Text = "Loading";
+        EditedItemTemplate!.IsVolumeVisible = false;
+        VolumeIndicatorFile.Children.Clear();
+        VolumeIndicatorFile.ColumnDefinitions.Clear();
+
+        try
+        {
+            var result = await _invokeRequest!.SendRequestAsync(
+                "get_volume_sfx",
+                new Dictionary<string, object>
+                    { { "name", EditedItemTemplate!.OldName }, { "file", EditedItemTemplate!.sound } }
+            );
+            var parsed = JsonSerializer.Deserialize(result, JsonContext.Default.ListString);
+
+            var i = 0;
+            foreach (var str in parsed)
+            {
+                var trimmed = str?.Trim().Trim('"');
+                if (float.TryParse(trimmed, out float height))
+                {
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        Console.WriteLine($"{height}");
+                        height = Math.Clamp(height, 0f, 1f);
+
+                        var bar = new Border
+                        {
+                            Background = Brushes.LightBlue,
+                            Width = 4,
+                            CornerRadius = new CornerRadius(2),
+                            Margin = new Thickness(1, 0),
+                            VerticalAlignment = VerticalAlignment.Center,
+                            Height = 32 * height
+                        };
+
+                        Grid.SetColumn(bar, i++);
+                        VolumeIndicatorFile.ColumnDefinitions.Add(new ColumnDefinition());
+                        VolumeIndicatorFile.Children.Add(bar);
+                    });
+                }
+            }
+
+            EditedItemTemplate!.IsVolumeVisible = true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Volume parsing error: {ex}");
+        }
+        finally
+        {
+            AudioFileText.Text = "Click to select an audio file";
+        }
+    }
     
     private async void DeleteItem(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
@@ -134,6 +201,7 @@ public partial class SfxsPage : UserControl
             EditedItemTemplate = btn.DataContext as SfxItemTemplate;
             EffectsUi.Reset();
             EffectsUi.ConvertJson(EditedItemTemplate!.effects);
+            GenerateVolume();
         }
     }
     
@@ -253,6 +321,7 @@ public partial class SfxsPage : UserControl
             var path = file.Path.LocalPath;
             EditedItemTemplate!.sound = path;
             EditedItemTemplate.OnPropertyChanged(nameof(EditedItemTemplate.sound));
+            GenerateVolume();
         }
     }
 }
@@ -264,6 +333,7 @@ public class SfxItemTemplate : SFXClass, INotifyPropertyChanged
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propname));
     
     private Color _color;
+    private bool _isVolumeVisible;
     
     public SfxItemTemplate(string Nname, string Nicon, List<byte> Ncolor, bool Nlowlatency, List<string> Nkeys, string Nsound, EffectsClass Neffects, bool NCreatingNew)
     : base(Nname, Nicon, Ncolor, Nlowlatency, Nkeys, Nsound, Neffects)
@@ -280,6 +350,7 @@ public class SfxItemTemplate : SFXClass, INotifyPropertyChanged
         Color = new Color(255, Ncolor[0], Ncolor[1], Ncolor[2]);
         OldName = Nname;
         CreatingNew = NCreatingNew;
+        IsVolumeVisible = false;
     }
     
     public Brush Brush => new SolidColorBrush(Color);
@@ -296,14 +367,43 @@ public class SfxItemTemplate : SFXClass, INotifyPropertyChanged
     }
     public string OldName { get; set; }
     public bool CreatingNew { get; set; }
-
     public string KeysText
     {
-        get => string.Join(" + ", keys);
+        get
+        {
+            if (keys.Count == 0)
+            {
+                return "Click to add a keybind";
+            }
+            else
+            {
+                return string.Join(" + ", keys);
+            }
+        }
         set
         {
             keys.Clear();
             value.Split(" + ").ToList().ForEach(x => keys.Add(x.Trim()));
+        }
+    }
+    public bool IsVolumeVisible
+    {
+        get => _isVolumeVisible;
+        set
+        {
+            _isVolumeVisible = value;
+            OnPropertyChanged();
+        }
+    }
+    public Brush LightOrDarkIconColor
+    {
+        get
+        {
+            double luminance = 0.299 * _color.R + 0.587 * _color.G + 0.114 * _color.B;
+
+            return luminance > 145 
+                ? new SolidColorBrush(Colors.Black)
+                : new SolidColorBrush(Colors.White);
         }
     }
 }

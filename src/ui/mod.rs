@@ -5,7 +5,7 @@ use global_hotkey::{GlobalHotKeyManager, hotkey::{Code, HotKey, Modifiers}};
 use serde_json::{Value, json};
 use tray_icon::{Icon, TrayIcon, TrayIconBuilder, menu::{Menu, MenuItem}};
 
-use crate::{error, files::{self, DeviceOrApp}, funcs, log, warn};
+use crate::{audio, error, files::{self, DeviceOrApp}, funcs, log, warn};
 
 #[link(name = "open_ui")]
 extern "C" {
@@ -490,6 +490,18 @@ fn handle_request(cmd: &str, args: Value, hotkeys: &mut Hotkeys) -> Value {
     } else if cmd == "get_apps" {
         let apps = funcs::get_apps();
         return json!({"result": apps});
+    } else if cmd == "get_volume_sfx" {
+        if let Some(name) = args.get("name").and_then(|v| v.as_str()) {
+            if !name.is_empty() {
+                let path = funcs::path_from_sfx_name(name.to_string());
+                let volume = audio::get_peaks(path);
+                return json!({"result": volume});
+            }
+        }
+        if let Some(file) = args.get("file").and_then(|v| v.as_str()) {
+            let volume = audio::get_peaks(file.to_string());
+            return json!({"result": volume});
+        }
     } else if cmd == "save_settings" {
         let res = funcs::save_settings(
             args.get("output").and_then(|v| v.as_str()).unwrap_or_default().to_string(),

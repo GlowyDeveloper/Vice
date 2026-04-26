@@ -12,26 +12,26 @@
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
         
-        <Border Grid.Column="0" Background="#222222" CornerRadius="8" BorderThickness="1" BorderBrush="White">
+        <Border Grid.Column="0" Background="{DynamicResource HighlightBrush}" CornerRadius="8" BorderThickness="1" BorderBrush="{DynamicResource Opposite}">
             <ScrollViewer Margin="6">
                 <StackPanel>
-                    <Button FontSize="12" Click="AddNodeButton" Content="In" FontWeight="Bold" Background="Transparent" HorizontalAlignment="Stretch"/>
-                    <Button FontSize="12" Click="AddNodeButton" Content="Out" FontWeight="Bold" Background="Transparent" HorizontalAlignment="Stretch"/>
+                    <Button FontSize="12" Click="AddNodeButton" Content="In" FontWeight="Bold" Background="Transparent" HorizontalAlignment="Stretch" Foreground="{DynamicResource Opposite}"/>
+                    <Button FontSize="12" Click="AddNodeButton" Content="Out" FontWeight="Bold" Background="Transparent" HorizontalAlignment="Stretch" Foreground="{DynamicResource Opposite}"/>
                     <Border Height="12"/>
-                    <Button FontSize="12" Click="AddNodeButton" Content="Split" FontWeight="Bold" Background="Transparent" HorizontalAlignment="Stretch"/>
-                    <Button FontSize="12" Click="AddNodeButton" Content="Merge" FontWeight="Bold" Background="Transparent" HorizontalAlignment="Stretch"/>
+                    <Button FontSize="12" Click="AddNodeButton" Content="Split" FontWeight="Bold" Background="Transparent" HorizontalAlignment="Stretch" Foreground="{DynamicResource Opposite}"/>
+                    <Button FontSize="12" Click="AddNodeButton" Content="Merge" FontWeight="Bold" Background="Transparent" HorizontalAlignment="Stretch" Foreground="{DynamicResource Opposite}"/>
                     <Border Height="12"/>
-                    <Button FontSize="12" Click="AddNodeButton" Content="Compression" FontWeight="Bold" Background="Transparent" HorizontalAlignment="Stretch"/>
-                    <Button FontSize="12" Click="AddNodeButton" Content="Delay" FontWeight="Bold" Background="Transparent" HorizontalAlignment="Stretch"/>
-                    <Button FontSize="12" Click="AddNodeButton" Content="Distortion" FontWeight="Bold" Background="Transparent" HorizontalAlignment="Stretch"/>
-                    <Button FontSize="12" Click="AddNodeButton" Content="Gain" FontWeight="Bold" Background="Transparent" HorizontalAlignment="Stretch"/>
-                    <Button FontSize="12" Click="AddNodeButton" Content="Gating" FontWeight="Bold" Background="Transparent" HorizontalAlignment="Stretch"/>
-                    <Button FontSize="12" Click="AddNodeButton" Content="Reverb" FontWeight="Bold" Background="Transparent" HorizontalAlignment="Stretch"/>
+                    <Button FontSize="12" Click="AddNodeButton" Content="Compression" FontWeight="Bold" Background="Transparent" HorizontalAlignment="Stretch" Foreground="{DynamicResource Opposite}"/>
+                    <Button FontSize="12" Click="AddNodeButton" Content="Delay" FontWeight="Bold" Background="Transparent" HorizontalAlignment="Stretch" Foreground="{DynamicResource Opposite}"/>
+                    <Button FontSize="12" Click="AddNodeButton" Content="Distortion" FontWeight="Bold" Background="Transparent" HorizontalAlignment="Stretch" Foreground="{DynamicResource Opposite}"/>
+                    <Button FontSize="12" Click="AddNodeButton" Content="Gain" FontWeight="Bold" Background="Transparent" HorizontalAlignment="Stretch" Foreground="{DynamicResource Opposite}"/>
+                    <Button FontSize="12" Click="AddNodeButton" Content="Gating" FontWeight="Bold" Background="Transparent" HorizontalAlignment="Stretch" Foreground="{DynamicResource Opposite}"/>
+                    <Button FontSize="12" Click="AddNodeButton" Content="Reverb" FontWeight="Bold" Background="Transparent" HorizontalAlignment="Stretch" Foreground="{DynamicResource Opposite}"/>
                 </StackPanel>
             </ScrollViewer>
         </Border>
         
-        <Border Grid.Column="2" Background="#222222" CornerRadius="8" BorderThickness="1" BorderBrush="White">
+        <Border Grid.Column="2" Background="{DynamicResource HighlightBrush}" CornerRadius="8" BorderThickness="1" BorderBrush="{DynamicResource Opposite}">
             <local:NodeEditor DataContext="{Binding EditorVm}" x:Name="NodeEditor"/>
         </Border>
     </Grid>

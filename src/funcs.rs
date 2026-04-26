@@ -177,6 +177,19 @@ pub(crate) fn get_volume(name: String) -> String {
     audio::get_volume_parsed(name)
 }
 
+pub(crate) fn path_from_sfx_name(name: String) -> String {
+    let mut path: String = "".to_owned();
+    for ext in SFX_EXTENTIONS {
+        let filename = format!("{}.{}", files::sfx_base().join(&name).to_str().unwrap_or(&name), ext);
+        if fs::metadata(&filename).is_ok() {
+            path = filename;
+            break;
+        }
+    }
+
+    path
+}
+
 pub(crate) fn uninstall() -> Result<String, String> {
     let mut debug = "false";
     let args: Vec<String> = std::env::args().collect();

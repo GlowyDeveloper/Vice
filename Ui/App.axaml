@@ -1,8 +1,34 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Vice.Ui.App"
-             RequestedThemeVariant="Default">
-             <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+             RequestedThemeVariant="Dark">
+    
+     <Application.Resources>
+         <ResourceDictionary>
+             <ResourceDictionary.ThemeDictionaries>
+                 <ResourceDictionary x:Key="Light">
+                     <Color x:Key="Color">White</Color>
+                     <SolidColorBrush x:Key="Brush">White</SolidColorBrush>
+                     <SolidColorBrush x:Key="Opposite">Black</SolidColorBrush>
+                     <SolidColorBrush x:Key="NotPressedBrush" Color="#805e5e5e"></SolidColorBrush>
+                     <SolidColorBrush x:Key="HoverBrush" Color="#80606060"></SolidColorBrush>
+                     <SolidColorBrush x:Key="PressedBrush" Color="#805b5b5b"></SolidColorBrush>
+                     <SolidColorBrush x:Key="HighlightBrush" Color="#405e5e5e"></SolidColorBrush>
+                     <x:Double x:Key="TintOpacity">0.6</x:Double>
+                 </ResourceDictionary>
+                 <ResourceDictionary x:Key="Dark">
+                     <Color x:Key="Color">Black</Color>
+                     <SolidColorBrush x:Key="Brush">Black</SolidColorBrush>
+                     <SolidColorBrush x:Key="Opposite">White</SolidColorBrush>
+                     <SolidColorBrush x:Key="NotPressedBrush" Color="#801e1e1e"></SolidColorBrush>
+                     <SolidColorBrush x:Key="HoverBrush" Color="#80202020"></SolidColorBrush>
+                     <SolidColorBrush x:Key="PressedBrush" Color="#801b1b1b"></SolidColorBrush>
+                     <SolidColorBrush x:Key="HighlightBrush" Color="#401e1e1e"></SolidColorBrush>
+                     <x:Double x:Key="TintOpacity">0.7</x:Double>
+                 </ResourceDictionary>
+             </ResourceDictionary.ThemeDictionaries>
+         </ResourceDictionary>
+     </Application.Resources>
 
     <Application.Styles>
         <FluentTheme />
