@@ -2,7 +2,7 @@ use std::path::Path;
 use std::{net::TcpStream, time::Duration, fs};
 use serde::Deserialize;
 
-use crate::files::{self, Channel, DeviceOrApp, Effects, Settings, SoundboardSFX};
+use crate::files::{self, Channel, DeviceOrApp, EffectNode, Effects, EffectsType, Settings, SoundboardSFX};
 use crate::audio::{self};
 use crate::error;
 
@@ -170,7 +170,10 @@ pub(crate) fn play_sound(name: String, low: bool) {
         return;
     }
 
-    audio::play_sfx(&path, low, name);
+    let sfxs: Vec<SoundboardSFX> = files::get_soundboard();
+    if let Some(pos) = sfxs.iter().position(|c| c.name == name) {
+        audio::play_sfx(path, low, sfxs[pos].effects.clone());
+    }
 }
 
 pub(crate) fn get_volume(name: String) -> String {

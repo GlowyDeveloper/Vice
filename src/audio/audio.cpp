@@ -11,7 +11,7 @@
 #include <atomic>
 #include <cmath>
 #include <chrono>
-#include <blocks.hpp>
+#include <effects.hpp>
 #define NOMINMAX
 #include <windows.h>
 #include <mmdeviceapi.h>
@@ -326,6 +326,7 @@ void clear_statics() {
 
 extern "C" {
     std::atomic<bool> stop_audio(true);
+    std::atomic<int16_t> audio_threads_running(0);
     #pragma region Volumes
     static std::unordered_map<std::string, float> volume;
     static std::unordered_map<std::string, float> volume_display;
@@ -635,7 +636,7 @@ extern "C" {
     }
     #pragma endregion
     #pragma region Play Sound
-    void play_sound(const char* file, const char* device_name, bool low_latency, const char* path) {
+    void play_sound(const char* file, const char* device_name, bool low_latency, const FFIEffects* effects) {
         PCMResult result = loadPCM(file);
         if (result.result != 0) {
             if (result.result == 1) {
@@ -661,25 +662,31 @@ extern "C" {
             return;
         }
 
+        audio_threads_running.fetch_add(1, std::memory_order_relaxed);
+
         CoInitialize(nullptr);
 
         IMMDevice* targetDevice = find_device_by_name(eRender, device_name);
         if (!targetDevice) {
             IMMDeviceEnumerator* pEnum = nullptr;
+            audio_threads_running.fetch_sub(1, std::memory_order_relaxed);
+            
             CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&pEnum));
             pEnum->GetDefaultAudioEndpoint(eRender, eConsole, &targetDevice);
             pEnum->Release();
         }
 
         if (!targetDevice) {
-            std::string msg = "No audio device found";
-            error(msg.c_str());
+            audio_threads_running.fetch_sub(1, std::memory_order_relaxed);
+            error("No audio device found");
             CoUninitialize();
             return;
         }
 
         IAudioClient* audioClient = nullptr;
         if (FAILED(targetDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&audioClient))) {
+            audio_threads_running.fetch_sub(1, std::memory_order_relaxed);
+
             targetDevice->Release();
             CoUninitialize();
             return;
@@ -687,6 +694,8 @@ extern "C" {
 
         WAVEFORMATEX* pwfx = nullptr;
         if (FAILED(audioClient->GetMixFormat(&pwfx)) || !pwfx) {
+            audio_threads_running.fetch_sub(1, std::memory_order_relaxed);
+
             audioClient->Release();
             targetDevice->Release();
             CoUninitialize();
@@ -704,12 +713,10 @@ extern "C" {
 
         int renderChannels = pwfx->nChannels;
 
-        std::vector<BlocksManager> managers(renderChannels);
-        for (int c = 0; c < renderChannels; ++c) {
-            managers[c].Initialize(path, pwfx->nSamplesPerSec);
-        }
+        BlocksManager manager{};
+        manager.Initialize(effects, pwfx->nSamplesPerSec, renderChannels);
 
-        size_t tailFrames = managers[0].RequiredTailSamples();
+        size_t tailFrames = manager.RequiredTailSamples();
         size_t totalFramesWithTail = resampledFrames + tailFrames;
         size_t totalSamplesWithTail = totalFramesWithTail * renderChannels;
 
@@ -718,8 +725,8 @@ extern "C" {
         memcpy(processed.data(), finalBuffer, resampledFrames * renderChannels * sizeof(float));
 
         for (size_t i = 0; i < totalSamplesWithTail; ++i) {
-            size_t c = i % renderChannels;
-            processed[i] = managers[c].Process(&processed[i]);
+            float* frame = &processed[i * renderChannels];
+            manager.Process(frame);
         }
 
         size_t bytesPerSample = pwfx->wBitsPerSample / 8;
@@ -737,8 +744,8 @@ extern "C" {
                 out32[i] = static_cast<int32_t>(v * 2147483647.f);
             }
         } else {
-            std::string msg = "Unsupported device format";
-            error(msg.c_str());
+            audio_threads_running.fetch_sub(1, std::memory_order_relaxed);
+            error("Unsupported device format");
             
             CoTaskMemFree(pwfx);
             audioClient->Release();
@@ -749,8 +756,8 @@ extern "C" {
 
         REFERENCE_TIME bufferDuration = low_latency ? 100000 : 500000;
         if (FAILED(audioClient->Initialize(AUDCLNT_SHAREMODE_SHARED, 0, bufferDuration, 0, pwfx, nullptr))) {
-            std::string msg = "AudioClient Initialize failed";
-            error(msg.c_str());
+            audio_threads_running.fetch_sub(1, std::memory_order_relaxed);
+            error("AudioClient Initialize failed");
 
             CoTaskMemFree(pwfx);
             audioClient->Release();
@@ -763,6 +770,8 @@ extern "C" {
 
         IAudioRenderClient* renderClient = nullptr;
         if (FAILED(audioClient->GetService(__uuidof(IAudioRenderClient), (void**)&renderClient))) {
+            audio_threads_running.fetch_sub(1, std::memory_order_relaxed);
+
             audioClient->Release();
             targetDevice->Release();
             CoUninitialize();
@@ -773,39 +782,39 @@ extern "C" {
         audioClient->GetBufferSize(&bufferFrameCount);
         audioClient->Start();
 
-        std::thread([renderClient, audioClient, outBuffer, bytesPerFrame, bufferFrameCount]() {
-            size_t offset = 0;
-            size_t totalBytes = outBuffer.size();
-            while (offset < totalBytes && !stop_audio.load()) {
-                UINT32 padding = 0;
-                if (FAILED(audioClient->GetCurrentPadding(&padding))) break;
+        size_t offset = 0;
+        while (offset < outBuffer.size() && !stop_audio.load()) {
+            UINT32 padding = 0;
+            if (FAILED(audioClient->GetCurrentPadding(&padding))) break;
 
-                UINT32 framesAvailable = bufferFrameCount - padding;
-                if (framesAvailable == 0) { Sleep(1); continue; }
+            UINT32 framesAvailable = bufferFrameCount - padding;
+            if (framesAvailable == 0) { Sleep(1); continue; }
 
-                UINT32 bytesAvailable = framesAvailable * bytesPerFrame;
-                UINT32 bytesLeft = static_cast<UINT32>(totalBytes - offset);
-                UINT32 bytesToWrite = std::min(bytesAvailable, bytesLeft);
-                UINT32 framesToWrite = bytesToWrite / bytesPerFrame;
+            UINT32 bytesAvailable = framesAvailable * bytesPerFrame;
+            UINT32 bytesLeft = static_cast<UINT32>(outBuffer.size() - offset);
+            UINT32 bytesToWrite = std::min(bytesAvailable, bytesLeft);
+            UINT32 framesToWrite = bytesToWrite / bytesPerFrame;
 
-                BYTE* pData = nullptr;
-                if (FAILED(renderClient->GetBuffer(framesToWrite, &pData))) break;
-                memcpy(pData, outBuffer.data() + offset, framesToWrite * bytesPerFrame);
-                offset += framesToWrite * bytesPerFrame;
-                renderClient->ReleaseBuffer(framesToWrite, 0);
-            }
+            BYTE* pData = nullptr;
+            if (FAILED(renderClient->GetBuffer(framesToWrite, &pData))) break;
+            memcpy(pData, outBuffer.data() + offset, framesToWrite * bytesPerFrame);
+            offset += framesToWrite * bytesPerFrame;
+            renderClient->ReleaseBuffer(framesToWrite, 0);
+        }
 
-            audioClient->Stop();
-            renderClient->Release();
-            audioClient->Release();
-        }).detach();
-
+        audioClient->Stop();
+        renderClient->Release();
+        audioClient->Release();
         targetDevice->Release();
+
+        audio_threads_running.fetch_sub(1, std::memory_order_relaxed);
     }
     #pragma endregion
     #pragma region Device to Device
-    void device_to_device(const char* input, const char* output, bool low_latency, const char* channel_name, const char* path) {
+    void device_to_device(const char* input, const char* output, bool low_latency, const char* channel_name, const FFIEffects* effects) {
         volume_display[channel_name] = 0.0f;
+
+        audio_threads_running.fetch_add(1, std::memory_order_relaxed);
 
         CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 
@@ -821,8 +830,8 @@ extern "C" {
         }
 
         if (!captureDevice || !renderDevice) {
-            std::string msg = "Could not find capture or render device";
-            error(msg.c_str());
+            audio_threads_running.fetch_sub(1, std::memory_order_relaxed);
+            error("Could not find capture or render device");
 
             if (captureDevice) captureDevice->Release();
             if (renderDevice) renderDevice->Release();
@@ -836,8 +845,8 @@ extern "C" {
         IAudioClient* renderClient  = nullptr;
         if (FAILED(captureDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&captureClient)) ||
             FAILED(renderDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&renderClient))) {
-            std::string msg = "Failed to activate client";
-            error(msg.c_str());
+            audio_threads_running.fetch_sub(1, std::memory_order_relaxed);
+            error("Failed to activate client");
 
             captureDevice->Release();
             renderDevice->Release();
@@ -848,8 +857,8 @@ extern "C" {
         WAVEFORMATEX* wfCapture = nullptr;
         WAVEFORMATEX* wfRender  = nullptr;
         if (FAILED(captureClient->GetMixFormat(&wfCapture)) || FAILED(renderClient->GetMixFormat(&wfRender)) || !wfCapture || !wfRender) {
-            std::string msg = "GetMixFormat failed";
-            error(msg.c_str());
+            audio_threads_running.fetch_sub(1, std::memory_order_relaxed);
+            error("GetMixFormat failed");
 
             if (wfCapture) CoTaskMemFree(wfCapture);
             if (wfRender) CoTaskMemFree(wfRender);
@@ -867,8 +876,8 @@ extern "C" {
         REFERENCE_TIME bufferDuration = low_latency ? 100000 : 500000;
         if (FAILED(captureClient->Initialize(AUDCLNT_SHAREMODE_SHARED, 0, bufferDuration, 0, wfCapture, nullptr)) ||
             FAILED(renderClient->Initialize(AUDCLNT_SHAREMODE_SHARED, 0, bufferDuration, 0, wfRender, nullptr))) {
-            std::string msg = "Initialize failed";
-            error(msg.c_str());
+            audio_threads_running.fetch_sub(1, std::memory_order_relaxed);
+            error("Initialize failed");
 
             CoTaskMemFree(wfCapture);
             CoTaskMemFree(wfRender);
@@ -880,11 +889,11 @@ extern "C" {
         }
 
         IAudioCaptureClient* pCapture = nullptr;
-        IAudioRenderClient*  pRender  = nullptr;
+        IAudioRenderClient* pRender  = nullptr;
         if (FAILED(captureClient->GetService(__uuidof(IAudioCaptureClient), (void**)&pCapture)) ||
             FAILED(renderClient->GetService(__uuidof(IAudioRenderClient), (void**)&pRender))) {
-            std::string msg = "GetService failed";
-            error(msg.c_str());
+            audio_threads_running.fetch_sub(1, std::memory_order_relaxed);
+            error("GetService failed");
 
             CoTaskMemFree(wfCapture);
             CoTaskMemFree(wfRender);
@@ -895,13 +904,14 @@ extern "C" {
             CoUninitialize(); return;
         }
 
-        UINT32 captureFrames = 0, renderFrames = 0;
+        UINT32 captureFrames = 0;
+        UINT32 renderFrames = 0;
         captureClient->GetBufferSize(&captureFrames);
         renderClient->GetBufferSize(&renderFrames);
 
         size_t maxFrames = std::max(captureFrames, renderFrames);
         int captureChannels = wfCapture->nChannels;
-        int renderChannels  = wfRender->nChannels;
+        int renderChannels = wfRender->nChannels;
 
         std::vector<float> captureBuffer(maxFrames * captureChannels);
         std::vector<float> renderBuffer(maxFrames * renderChannels);
@@ -909,12 +919,8 @@ extern "C" {
         captureClient->Start();
         renderClient->Start();
 
-        std::vector<BlocksManager> managers;
-        managers.resize(renderChannels);
-
-        for (int c = 0; c < renderChannels; ++c) {
-            managers[c].Initialize(path, wfRender->nSamplesPerSec);
-        }
+        BlocksManager manager{};
+        manager.Initialize(effects, wfRender->nSamplesPerSec, renderChannels);
 
         while (!stop_audio.load()) {
             UINT32 packetFrames = 0;
@@ -966,9 +972,9 @@ extern "C" {
                 outFrames = numFrames;
             }
 
-            for (size_t i = 0; i < outFrames * renderChannels; ++i) {
-                size_t c = i % renderChannels;
-                toRender[i] = managers[c].Process(&toRender[i]);
+            for (size_t i = 0; i < outFrames; ++i) {
+                float* frame = &toRender[i * renderChannels];
+                manager.Process(frame);
             }
 
             find_volume(channel_name, toRender, outFrames * renderChannels);
@@ -1026,11 +1032,15 @@ extern "C" {
         CoTaskMemFree(wfCapture);
         CoTaskMemFree(wfRender);
         CoUninitialize();
+
+        audio_threads_running.fetch_sub(1, std::memory_order_relaxed);
     }
     #pragma endregion
     #pragma region App to Device
-    void app_to_device(const char* input, const char* output, bool low_latency, const char* channel_name, const char* path) {
+    void app_to_device(const char* input, const char* output, bool low_latency, const char* channel_name, const FFIEffects* effects) {
         volume_display[channel_name] = 0.0f;
+
+        audio_threads_running.fetch_add(1, std::memory_order_relaxed);
 
         CoInitialize(nullptr);
 
@@ -1051,6 +1061,8 @@ extern "C" {
         }
         CloseHandle(hSnap);
         if (!targetPid) {
+            audio_threads_running.fetch_sub(1, std::memory_order_relaxed);
+            
             std::string msg = std::string("Process not found: ") + input;
             error(msg.c_str());
 
@@ -1067,8 +1079,8 @@ extern "C" {
         if (!renderDevice)
             pEnum->GetDefaultAudioEndpoint(eRender, eConsole, &renderDevice);
         if (!renderDevice) {
-            std::string msg = "No render device found";
-            error(msg.c_str());
+            audio_threads_running.fetch_sub(1, std::memory_order_relaxed);
+            error("No render device found");
 
             pEnum->Release();
             CoUninitialize();
@@ -1128,8 +1140,8 @@ extern "C" {
         devicesAll->Release();
 
         if (!captureDevice) {
-            std::string msg = "Failed to find audio session for PID";
-            error(msg.c_str());
+            audio_threads_running.fetch_sub(1, std::memory_order_relaxed);
+            error("Failed to find audio session for PID");
 
             renderDevice->Release();
             pEnum->Release();
@@ -1138,8 +1150,8 @@ extern "C" {
         }
 
         if (captureDevice == renderDevice) {
-            std::string msg = "Capture and render device are the same. Feedback possible";
-            warn(msg.c_str());
+            audio_threads_running.fetch_sub(1, std::memory_order_relaxed);
+            error("Capture and render device are the same. Feedback possible");
 
             captureDevice->Release();
             renderDevice->Release();
@@ -1181,12 +1193,11 @@ extern "C" {
 
         int renderChannels = wfRender->nChannels;
 
-        std::vector<BlocksManager> managers(renderChannels);
-        for (int c = 0; c < renderChannels; ++c) {
-            managers[c].Initialize(path, wfRender->nSamplesPerSec);
-        }
+        BlocksManager manager{};
+        manager.Initialize(effects, wfRender->nSamplesPerSec, renderChannels);
 
-        captureClient->Start(); renderClient->Start();
+        captureClient->Start();
+        renderClient->Start();
 
         size_t captureFramesMax = wfCapture->nSamplesPerSec;
         std::vector<float> captureBuffer(captureFramesMax * wfCapture->nChannels);
@@ -1242,9 +1253,9 @@ extern "C" {
                 outFrames = numFrames;
             }
 
-            for (size_t i = 0; i < outFrames * wfRender->nChannels; ++i) {
-                size_t c = i % wfRender->nChannels;
-                outBuffer[i] = managers[c].Process(&outBuffer[i]);
+            for (size_t i = 0; i < outFrames; ++i) {
+                float* frame = &outBuffer[i * renderChannels];
+                manager.Process(frame);
             }
 
             find_volume(channel_name, outBuffer, outFrames * wfRender->nChannels);
@@ -1304,6 +1315,8 @@ extern "C" {
         CoTaskMemFree(wfCapture);
         CoTaskMemFree(wfRender);
         CoUninitialize();
+
+        audio_threads_running.fetch_sub(1, std::memory_order_relaxed);
     }
     #pragma endregion
 }

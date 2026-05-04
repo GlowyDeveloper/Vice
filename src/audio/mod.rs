@@ -1,70 +1,162 @@
 use std::{
-    ffi::{CStr, CString, c_char}, sync::atomic::{AtomicBool, Ordering}, thread
+    ffi::{CStr, CString, c_char}, sync::atomic::{AtomicBool, AtomicI16, Ordering}, thread
 };
 
-use crate::{critical, files::{self, Channel, DeviceOrApp}, log};
+use crate::{critical, error, files::{self, Channel, DeviceOrApp, Effects, EffectsType}, log};
 
 #[link(name = "audio")]
 unsafe extern "C" {
     static stop_audio: AtomicBool;
+    static audio_threads_running: AtomicI16;
 
     fn get_outputs(len: *mut usize) -> *const *const c_char;
     fn get_inputs(len: *mut usize) -> *const *const c_char;
     fn get_apps(len: *mut usize) -> *const *const c_char;
     fn get_sfx_peaks(len: *mut usize, file: *const c_char) -> *const *const c_char;
-    fn play_sound(file: *const c_char, device_name: *const c_char, low_latency: bool, path: *const c_char);
-    fn device_to_device(input: *const c_char, output: *const c_char, low_latency: bool, channel_name: *const c_char, path: *const c_char);
-    fn app_to_device(input: *const c_char, output: *const c_char, low_latency: bool, channel_name: *const c_char, path: *const c_char);
+    fn play_sound(file: *const c_char, device_name: *const c_char, low_latency: bool, effects: *const FFIEffects);
+    fn device_to_device(input: *const c_char, output: *const c_char, low_latency: bool, channel_name: *const c_char, effects: *const FFIEffects);
+    fn app_to_device(input: *const c_char, output: *const c_char, low_latency: bool, channel_name: *const c_char, effects: *const FFIEffects);
     fn insert_volume(key: *const c_char, value: f32);
     fn reset_volume();
     fn get_volume_display(key: *const c_char) -> f32;
 }
 
-fn get_blocks(channel_name: String) -> String {
-    /*let path: std::path::PathBuf = files::blocks_base().join(format!("{}.json", channel_name));
-    let mut json_str: String = "[]".to_string();
-    if path.exists() {
-        match fs::read_to_string(path) {
-            Ok(content) => {json_str = content;},
-            Err(e) => {
-                error!("Failed to read blocks file for item \"{}\": {:#?}", channel_name, e);
-            }
-        };
+#[repr(C)]
+pub struct FFISlice<T> {
+    pub ptr: *const T,
+    pub len: usize,
+}
+
+#[repr(u32)]
+pub enum FFIEffectsType {
+    In = 0,
+    Out,
+    Split,
+    Merge,
+    Compression,
+    Delay,
+    Distortion,
+    Gain, 
+    Gating,
+    Reverb,
+}
+
+#[repr(C)]
+pub struct FFIEffectNode {
+    pub x: u32,
+    pub y: u32,
+    pub type_of: FFIEffectsType,
+    pub id: *const c_char,
+    pub inputs: FFISlice<*const c_char>,
+    pub outputs: FFISlice<*const c_char>,
+    pub options: FFISlice<*const c_char>,
+}
+
+#[repr(C)]
+pub struct FFIEffectsConnection {
+    pub from_node_id: *const c_char,
+    pub from_port_id: *const c_char,
+    pub to_node_id: *const c_char,
+    pub to_port_id: *const c_char,
+}
+
+#[repr(C)]
+pub struct FFIEffects {
+    pub nodes: FFISlice<FFIEffectNode>,
+    pub connections: FFISlice<FFIEffectsConnection>,
+}
+
+#[repr(C)]
+pub struct EffectsFFIOwned {
+    pub ffi: FFIEffects,
+
+    _strings: Vec<CString>,
+    _nodes: Vec<FFIEffectNode>,
+    _connections: Vec<FFIEffectsConnection>,
+}
+
+fn convert_effects_to_ffi_safe(effects: Effects) -> EffectsFFIOwned {
+    fn convert_type(t: EffectsType) -> FFIEffectsType {
+        match t {
+            EffectsType::In => FFIEffectsType::In,
+            EffectsType::Out => FFIEffectsType::Out,
+            EffectsType::Split => FFIEffectsType::Split,
+            EffectsType::Merge => FFIEffectsType::Merge,
+            EffectsType::Compression => FFIEffectsType::Compression,
+            EffectsType::Delay => FFIEffectsType::Delay,
+            EffectsType::Distortion => FFIEffectsType::Distortion,
+            EffectsType::Gain => FFIEffectsType::Gain,
+            EffectsType::Gating => FFIEffectsType::Gating,
+            EffectsType::Reverb => FFIEffectsType::Reverb,
+        }
     }
 
-    let json: serde_json::Value = match serde_json::from_str::<serde_json::Value>(&json_str) {
-        Ok(p) => p,
-        Err(e) => {
-            error!("Failed to parse blocks file: {}", e);
-            serde_json::json!([])
+    fn to_c_ptr(s: String, strings: &mut Vec<CString>) -> *const c_char {
+        let c = CString::new(s).unwrap();
+        let ptr = c.as_ptr();
+        strings.push(c);
+        ptr
+    }
+
+    fn to_slice(vec: Vec<String>, strings: &mut Vec<CString>) -> FFISlice<*const c_char> {
+        let mut ptrs: Vec<*const c_char> = Vec::with_capacity(vec.len());
+
+        for s in vec {
+            let c = CString::new(s).unwrap();
+            ptrs.push(c.as_ptr());
+            strings.push(c);
         }
+
+        let ptr = ptrs.as_ptr();
+        let len = ptrs.len();
+
+        std::mem::forget(ptrs);
+
+        FFISlice { ptr, len }
+    }
+
+    let mut strings = Vec::new();
+    let mut nodes = Vec::new();
+    let mut connections = Vec::new();
+
+    for n in effects.nodes {
+        nodes.push(FFIEffectNode {
+            x: n.x,
+            y: n.y,
+            type_of: convert_type(n.type_of),
+            id: to_c_ptr(n.id, &mut strings),
+            inputs: to_slice(n.inputs, &mut strings),
+            outputs: to_slice(n.outputs, &mut strings),
+            options: to_slice(n.options, &mut strings),
+        });
+    }
+
+    for c in effects.connections {
+        connections.push(FFIEffectsConnection {
+            from_node_id: to_c_ptr(c.from_node_id, &mut strings),
+            from_port_id: to_c_ptr(c.from_port_id, &mut strings),
+            to_node_id: to_c_ptr(c.to_node_id, &mut strings),
+            to_port_id: to_c_ptr(c.to_port_id, &mut strings),
+        });
+    }
+
+    let ffi = FFIEffects {
+        nodes: FFISlice {
+            ptr: nodes.as_ptr(),
+            len: nodes.len(),
+        },
+        connections: FFISlice {
+            ptr: connections.as_ptr(),
+            len: connections.len(),
+        },
     };
 
-
-    let mut parsed = "".to_string();
-    for block in json.as_array().unwrap_or(&vec![]) {
-        let b = block.as_object().unwrap();
-        let block_type = b.get("type").unwrap().as_str().unwrap_or("");
-        parsed = format!("{}{}", parsed, block_type);
-
-        if let Some(time) = b.get("time") {
-            parsed = format!("{} time={}", parsed, time.as_i64().unwrap_or(0).to_string());
-        }
-        if let Some(intensity) = b.get("intensity") {
-            parsed = format!("{} intensity={}", parsed, intensity.as_f64().unwrap_or(0.0).to_string());
-        }
-        if let Some(amount) = b.get("amount") {
-            parsed = format!("{} amount={}", parsed, amount.as_f64().unwrap_or(0.0).to_string());
-        }
-        if let Some(threshold) = b.get("threshold") {
-            parsed = format!("{} threshold={}", parsed, threshold.as_f64().unwrap_or(0.0).to_string());
-        }
-
-        parsed = format!("{}\n", parsed);
+    EffectsFFIOwned {
+        ffi,
+        _strings: strings,
+        _nodes: nodes,
+        _connections: connections,
     }
-
-    parsed*/
-    channel_name
 }
 
 pub(crate) fn outputs() -> Vec<String> {
@@ -97,23 +189,32 @@ pub(crate) fn inputs() -> Vec<String> {
     }
 }
 
-pub(crate) fn play_sfx(file_path: &str, low_latency: bool, sfx_name: String) {
-    let output: String = files::get_settings().output;
-    let path_cstr: CString = CString::new(get_blocks(sfx_name)).unwrap();
+pub(crate) fn play_sfx(file_path: String, low_latency: bool, effects: Effects) {
+    let thread_name = format!("sfx_{}", file_path);
 
-    let c_device: Option<CString> = match output.is_empty() {
-        true => None,
-        false => Some(CString::new(output).unwrap())
-    };
+    if let Err(e) = thread::Builder::new()
+        .name(thread_name.clone())
+        .spawn(move || {
+            let output: String = files::get_settings().output;
 
-    let device: *const c_char = c_device
-        .as_ref()
-        .map_or(std::ptr::null(), |s| s.as_ptr());
-    let path: *const i8 = path_cstr.as_ptr();
+            let c_device: Option<CString> = match output.is_empty() {
+                true => None,
+                false => Some(CString::new(output).unwrap())
+            };
+
+            let device: *const c_char = c_device
+                .as_ref()
+                .map_or(std::ptr::null(), |s| s.as_ptr());
+            
+            let file: CString = CString::new(file_path).unwrap();
+            let ffi = convert_effects_to_ffi_safe(effects);
+
+            unsafe {play_sound(file.as_ptr(), device, low_latency, &ffi.ffi);}
+        }) {
+
+        error!("Failed to spawn sound effect thread for \"{}\": {}", thread_name, e);
+    }
     
-    let file: CString = CString::new(file_path).unwrap();
-
-    unsafe {play_sound(file.as_ptr(), device, low_latency, path);}
 }
 
 pub(crate) fn apps() -> Vec<String> {
@@ -147,7 +248,7 @@ pub(crate) fn get_peaks(file_path: String) -> Vec<String> {
     }
 }
 
-fn manage_device(input_device_name: String, output_device_name: String, low_latency: bool, channel_name: String) {
+fn manage_device(input_device_name: String, output_device_name: String, low_latency: bool, channel_name: String, effects: Effects) {
     let input_cstr: Option<CString> = match input_device_name.is_empty() {
         true => None,
         false => Some(CString::new(input_device_name).unwrap())
@@ -157,31 +258,29 @@ fn manage_device(input_device_name: String, output_device_name: String, low_late
         false => Some(CString::new(output_device_name).unwrap())
     };
     let name_cstr: CString = CString::new(channel_name.clone()).unwrap();
-    let path_cstr: CString = CString::new(get_blocks(channel_name)).unwrap();
 
     let input: *const i8 = input_cstr.as_ref().map_or(std::ptr::null(), |cstr| cstr.as_ptr());
     let output: *const i8 = output_cstr.as_ref().map_or(std::ptr::null(), |cstr| cstr.as_ptr());
     let name: *const i8 = name_cstr.as_ptr();
-    let path: *const i8 = path_cstr.as_ptr();
+    let ffi = convert_effects_to_ffi_safe(effects);
 
-    unsafe {device_to_device(input, output, low_latency, name, path)};
+    unsafe {device_to_device(input, output, low_latency, name, &ffi.ffi)};
 }
 
-fn manage_app(app_name: String, output_device_name: String, low_latency: bool, channel_name: String) {
+fn manage_app(app_name: String, output_device_name: String, low_latency: bool, channel_name: String, effects: Effects) {
     let input_cstr: CString = CString::new(app_name).unwrap();
     let output_cstr: Option<CString> = match output_device_name.is_empty() {
         true => None,
         false => Some(CString::new(output_device_name).unwrap())
     };
     let name_cstr: CString = CString::new(channel_name.clone()).unwrap();
-    let path_cstr: CString = CString::new(get_blocks(channel_name)).unwrap();
 
     let input: *const i8 = input_cstr.as_ptr();
     let output: *const i8 = output_cstr.as_ref().map_or(std::ptr::null(), |cstr| cstr.as_ptr());
     let name: *const i8 = name_cstr.as_ptr();
-    let path: *const i8 = path_cstr.as_ptr();
+    let ffi = convert_effects_to_ffi_safe(effects);
 
-    unsafe {app_to_device(input, output, low_latency, name, path)};
+    unsafe {app_to_device(input, output, low_latency, name, &ffi.ffi)};
 }
 
 pub(crate) fn set_volume(channel_name: String, volume: f32) {
@@ -232,9 +331,9 @@ pub(crate) fn start() {
                 }
 
                 if channel.deviceorapp == DeviceOrApp::Device {
-                    manage_device(channel.device, files::get_settings().output, channel.lowlatency, channel.name);
+                    manage_device(channel.device, files::get_settings().output, channel.lowlatency, channel.name, channel.effects);
                 } else {
-                    manage_app(channel.device, files::get_settings().output, channel.lowlatency, channel.name);
+                    manage_app(channel.device, files::get_settings().output, channel.lowlatency, channel.name, channel.effects);
                 }
             }) {
 
@@ -256,9 +355,15 @@ pub(crate) fn restart() {
                 reset_volume();
 
                 stop_audio.store(true, Ordering::SeqCst);
-            }
 
-            std::thread::sleep(std::time::Duration::from_millis(500));
+                loop {
+                    if audio_threads_running.load(Ordering::SeqCst) == 0 {
+                        break;
+                    }
+
+                    std::thread::sleep(std::time::Duration::from_millis(50));
+                }
+            }
             
             start();
         })

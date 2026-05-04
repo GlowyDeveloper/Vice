@@ -45,16 +45,16 @@ pub(crate) struct EffectNode {
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Default, Clone)]
 pub(crate) struct Effects {
-    nodes: Vec<EffectNode>,
-    connections: Vec<EffectsConnection>
+    pub(crate) nodes: Vec<EffectNode>,
+    pub(crate) connections: Vec<EffectsConnection>
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Default, Clone)]
 pub(crate) struct EffectsConnection {
-    from_node_id: String,
-    from_port_id: String,
-    to_node_id: String,
-    to_port_id: String
+    pub(crate) from_node_id: String,
+    pub(crate) from_port_id: String,
+    pub(crate) to_node_id: String,
+    pub(crate) to_port_id: String
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Default)]
