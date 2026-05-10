@@ -17,6 +17,12 @@ public partial class NodeEditor : UserControl
 {
     private NodeEditorModel? Vm => DataContext as NodeEditorModel;
     private bool _needsInitialDraw = true;
+    private ScaleTransform _scaleTransform = new ScaleTransform(1.0, 1.0);
+    private TranslateTransform _translateTransform = new TranslateTransform(0.0, 0.0);
+    private bool _isPanning;
+    private Point _panStartScreen;
+    private double _panStartOffsetX;
+    private double _panStartOffsetY;
 
     public NodeEditor()
     {
@@ -25,6 +31,13 @@ public partial class NodeEditor : UserControl
         DataContextChanged += NodeEditor_DataContextChanged;
         PointerMoved += NodeEditor_PointerMoved;
         PointerReleased += NodeEditor_PointerReleased;
+        PointerWheelChanged += NodeEditor_PointerWheelChanged;
+        PointerPressed += NodeEditor_PointerPressed;
+
+        var tg = new TransformGroup();
+        tg.Children.Add(_scaleTransform);
+        tg.Children.Add(_translateTransform);
+        ContentRoot.RenderTransform = tg;
 
         LayoutUpdated += (_, __) =>
         {
@@ -47,6 +60,8 @@ public partial class NodeEditor : UserControl
         foreach (var n in Vm.Nodes)
             n.PropertyChanged += Node_PropertyChanged;
         
+        UpdateTransforms();
+
         RedrawConnections();
     }
 
@@ -55,6 +70,7 @@ public partial class NodeEditor : UserControl
         if (e.NewItems != null)
             foreach (NodeControlModel n in e.NewItems) n.PropertyChanged += Node_PropertyChanged;
         
+        Vm?.OnEdit();
         RedrawConnections();
     }
 
@@ -70,41 +86,131 @@ public partial class NodeEditor : UserControl
     {
         if (e.PropertyName == nameof(NodeEditorModel.IsPreviewing) || e.PropertyName == nameof(NodeEditorModel.PreviewEndX) || e.PropertyName == nameof(NodeEditorModel.PreviewEndY))
             RedrawConnections();
+
+        if (e.PropertyName == nameof(NodeEditorModel.Zoom) || e.PropertyName == nameof(NodeEditorModel.OffsetX) || e.PropertyName == nameof(NodeEditorModel.OffsetY))
+            UpdateTransforms();
     }
 
     private void Connections_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        Vm?.OnEdit();
         RedrawConnections();
     }
 
     private void NodeEditor_PointerMoved(object? sender, PointerEventArgs e)
     {
+        if (_isPanning && Vm != null)
+        {
+            var posScreen = e.GetPosition(this);
+            var dx = posScreen.X - _panStartScreen.X;
+            var dy = posScreen.Y - _panStartScreen.Y;
+            Vm.OffsetX = _panStartOffsetX + dx;
+            Vm.OffsetY = _panStartOffsetY + dy;
+            UpdateTransforms();
+            return;
+        }
+
         if (Vm?.IsPreviewing == true)
         {
-            var p = e.GetPosition(this);
+            var pScreen = e.GetPosition(this);
+            var p = ScreenToContent(pScreen);
             Vm.UpdatePreview(p.X, p.Y);
             RedrawConnections();
         }
     }
 
+    private void NodeEditor_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        var current = e.GetCurrentPoint(this);
+        if (current.Properties.IsMiddleButtonPressed)
+        {
+            _panStartScreen = e.GetPosition(this);
+            _panStartOffsetX = Vm?.OffsetX ?? _translateTransform.X;
+            _panStartOffsetY = Vm?.OffsetY ?? _translateTransform.Y;
+            try
+            {
+                e.Pointer.Capture(this);
+            }
+            catch { }
+            _isPanning = true;
+            return;
+        }
+    }
+
+    private void NodeEditor_PointerWheelChanged(object? sender, PointerWheelEventArgs e)
+    {
+        if (Vm is null) return;
+
+        var posScreen = e.GetPosition(this);
+        var before = ScreenToContent(posScreen);
+
+        double zoomFactor = e.Delta.Y > 0 ? 1.1 : 0.9;
+        var oldZoom = Vm.Zoom;
+        var newZoom = Math.Max(0.2, Math.Min(4.0, oldZoom * zoomFactor));
+
+        Vm.Zoom = newZoom;
+        Vm.OffsetX = posScreen.X - before.X * newZoom;
+        Vm.OffsetY = posScreen.Y - before.Y * newZoom;
+
+        UpdateTransforms();
+        RedrawConnections();
+    }
+
     private void NodeEditor_PointerReleased(object? sender, PointerReleasedEventArgs e)
     {
+        if (_isPanning)
+        {
+            _isPanning = false;
+            e.Pointer.Capture(null);
+            return;
+        }
+
         if (Vm?.IsPreviewing == true && Vm.PreviewStartPort != null)
         {
             var point = e.GetPosition(this);
+            var contentPoint = ScreenToContent(point);
 
-            var hit = this.GetVisualsAt(point)
-                .OfType<Control>()
-                .FirstOrDefault(c => c.DataContext is PortModel);
+            PortModel? nearestPort = null;
+            double bestDistSq = double.MaxValue;
+            const double threshold = 12.0;
 
-            var targetPort = hit?.DataContext as PortModel;
+            foreach (var node in Vm.Nodes)
+            {
+                foreach (var p in node.Inputs)
+                {
+                    var anchor = GetPortAnchor(node.Id, p.Id);
+                    if (!anchor.HasValue) continue;
+                    var dx = anchor.Value.X - contentPoint.X;
+                    var dy = anchor.Value.Y - contentPoint.Y;
+                    var distSq = dx * dx + dy * dy;
+                    if (distSq < bestDistSq)
+                    {
+                        bestDistSq = distSq;
+                        nearestPort = p;
+                    }
+                }
 
-            if (targetPort != null)
+                foreach (var p in node.Outputs)
+                {
+                    var anchor = GetPortAnchor(node.Id, p.Id);
+                    if (!anchor.HasValue) continue;
+                    var dx = anchor.Value.X - contentPoint.X;
+                    var dy = anchor.Value.Y - contentPoint.Y;
+                    var distSq = dx * dx + dy * dy;
+                    if (distSq < bestDistSq)
+                    {
+                        bestDistSq = distSq;
+                        nearestPort = p;
+                    }
+                }
+            }
+
+            if (nearestPort != null && Math.Sqrt(bestDistSq) <= threshold)
             {
                 Vm.TryAddConnection(
                     Vm.PreviewStartNodeId!,
                     Vm.PreviewStartPort,
-                    targetPort
+                    nearestPort
                 );
             }
 
@@ -113,7 +219,7 @@ public partial class NodeEditor : UserControl
         }
     }
 
-    private void RedrawConnections()
+    public void RedrawConnections()
     {
         Dispatcher.UIThread.Post(() =>
         {
@@ -167,42 +273,75 @@ public partial class NodeEditor : UserControl
     
     private Point? GetPortAnchor(string nodeId, string portId)
     {
-        var nodeControl = this.GetVisualDescendants()
-            .OfType<NodeControl>()
-            .FirstOrDefault(nc => nc.DataContext is NodeControlModel nvm && nvm.Id == nodeId);
-
-        if (nodeControl == null)
-            return null;
-
-        var ellipse = nodeControl.GetVisualDescendants()
-            .OfType<Ellipse>()
-            .FirstOrDefault(el => el.DataContext is PortModel pm && pm.Id == portId);
-
-        if (ellipse == null)
-            return null;
-
-        var center = new Point(
-            ellipse.Bounds.Width / 2.0,
-            ellipse.Bounds.Height / 2.0
-        );
-
-        var translated = ellipse.TranslatePoint(center, this);
-
-        if (translated != null)
-            return translated.Value;
-
         var node = Vm?.Nodes.FirstOrDefault(n => n.Id == nodeId);
         if (node is null) return null;
 
         var port = node.Inputs.FirstOrDefault(p => p.Id == portId) ?? node.Outputs.FirstOrDefault(p => p.Id == portId);
         if (port is null) return null;
-        
-        double x = port.IsInput
-            ? node.X + 6 + 5
-            : node.X + 160 - 6 - 5;
 
-        double y = node.Y + 20 + port.Index * 18;
+        var nodeControl = this.GetVisualDescendants()
+            .OfType<NodeControl>()
+            .FirstOrDefault(nc => nc.DataContext is NodeControlModel nvm && nvm.Id == nodeId);
+
+        if (nodeControl != null)
+        {
+            var ellipse = nodeControl.GetVisualDescendants()
+                .OfType<Ellipse>()
+                .FirstOrDefault(el => el.DataContext is PortModel pm && pm.Id == portId);
+
+            if (ellipse != null)
+            {
+                var center = new Point(ellipse.Bounds.Width / 2.0, ellipse.Bounds.Height / 2.0);
+                var translatedToNode = ellipse.TranslatePoint(center, nodeControl);
+                if (translatedToNode != null)
+                {
+                    return new Point(node.X + translatedToNode.Value.X, node.Y + translatedToNode.Value.Y);
+                }
+            }
+        }
+
+        const double nodeWidth = 160.0;
+        const double horizontalMargin = 6.0;
+        const double portEllipseRadius = 5.0;
+        const double portTopOffset = 20.0;
+        const double portVerticalSpacing = 18.0;
+
+        double x = port.IsInput
+            ? node.X + horizontalMargin + portEllipseRadius
+            : node.X + nodeWidth - horizontalMargin - portEllipseRadius;
+
+        double y = node.Y + portTopOffset + port.Index * portVerticalSpacing;
 
         return new Point(x, y);
+    }
+
+    private void UpdateTransforms()
+    {
+        if (Vm is null) return;
+
+        _scaleTransform.ScaleX = Vm.Zoom;
+        _scaleTransform.ScaleY = Vm.Zoom;
+        _translateTransform.X = Vm.OffsetX;
+        _translateTransform.Y = Vm.OffsetY;
+    }
+
+    public Point ScreenToContent(Point pScreen)
+    {
+        var sx = _scaleTransform.ScaleX;
+        var sy = _scaleTransform.ScaleY;
+        var tx = _translateTransform.X;
+        var ty = _translateTransform.Y;
+
+        return new Point((pScreen.X - tx) / sx, (pScreen.Y - ty) / sy);
+    }
+
+    public Point ContentToScreen(Point pContent)
+    {
+        var sx = _scaleTransform.ScaleX;
+        var sy = _scaleTransform.ScaleY;
+        var tx = _translateTransform.X;
+        var ty = _translateTransform.Y;
+
+        return new Point(pContent.X * sx + tx, pContent.Y * sy + ty);
     }
 }

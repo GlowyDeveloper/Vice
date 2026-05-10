@@ -5,6 +5,12 @@
              x:DataType="models:NodeControlModel"
              x:CompileBindings="True">
 
+  <UserControl.ContextMenu>
+    <ContextMenu>
+      <MenuItem Header="Delete" Click="OnDeleteClicked"/>
+    </ContextMenu>
+  </UserControl.ContextMenu>
+
   <Border Background="{DynamicResource NotPressedBrush}" CornerRadius="6">
     <Grid>
       <Grid.ColumnDefinitions>
@@ -27,7 +33,28 @@
       </StackPanel>
 
       <StackPanel Grid.Column="1" Margin="6" HorizontalAlignment="Center" VerticalAlignment="Center">
-        <TextBlock Text="{Binding Title}" FontWeight="Bold" HorizontalAlignment="Center"/>
+        <StackPanel Spacing="6" HorizontalAlignment="Center" Orientation="Horizontal">
+          <TextBlock Text="{Binding Title}" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          
+          <Button Click="OnDeleteClicked" VerticalAlignment="Center" HorizontalAlignment="Center">
+            <Button.Styles>
+              <Style Selector="Button">
+                <Setter Property="Background" Value="#00000000"/>
+
+                <Style Selector="^:pointerover">
+                  <Setter Property="Background" Value="{DynamicResource HoverBrush}"/>
+                </Style>
+
+                <Style Selector="^:pressed">
+                  <Setter Property="Background" Value="{DynamicResource PressedBrush}"/>
+                </Style>
+              </Style>
+            </Button.Styles>
+
+            <PathIcon Data="{StaticResource delete_regular}" />
+          </Button>
+        </StackPanel>
+        
         <StackPanel Spacing="6" HorizontalAlignment="Center">
           <ItemsControl ItemsSource="{Binding Options}">
             <ItemsControl.ItemTemplate>

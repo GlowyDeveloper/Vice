@@ -3,9 +3,10 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text.Json;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using Vice.Ui.Controls.Effects.Models;
 using Vice.Ui.Utils;
 
@@ -17,12 +18,31 @@ public partial class Effects : UserControl, INotifyPropertyChanged
     public void OnPropertyChanged([CallerMemberName] string? propname = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propname));
     
+    public static readonly StyledProperty<IBrush> BorderColorProperty = 
+        AvaloniaProperty.Register<Effects, IBrush>(nameof(BorderColor));
+    
+    public IBrush BorderColor
+    {
+        get => GetValue(BorderColorProperty);
+        set => SetValue(BorderColorProperty, value);
+    }
+    
+    public event EventHandler<RoutedEventArgs>? Edited;
+    
     public NodeEditorModel EditorVm { get; set; } = new();
 
     public Effects()
     {
         InitializeComponent();
         DataContext = this;
+
+        var oppositeBrush = Application.Current?.FindResource("Opposite") as IBrush;
+        if (BorderColor == null && oppositeBrush != null)
+        {
+            BorderColor = oppositeBrush;
+        }
+
+        EditorVm.Edit += (sender, e) => CallEditEvent(this, new RoutedEventArgs());
     }
 
     public void ConvertJson(EffectsClass EffectsPath)
@@ -146,6 +166,7 @@ public partial class Effects : UserControl, INotifyPropertyChanged
     public void Reset()
     {
         EditorVm = new NodeEditorModel();
+        EditorVm.Edit += (sender, e) => CallEditEvent(this, new RoutedEventArgs());
         OnPropertyChanged(nameof(EditorVm));
     }
 
@@ -207,5 +228,13 @@ public partial class Effects : UserControl, INotifyPropertyChanged
         }
         
         EditorVm.Nodes.Add(new NodeControlModel(node));
+    }
+
+    private void CallEditEvent(object sender, RoutedEventArgs e)
+    {
+        if (Edited is not null)
+        {
+            Edited.Invoke(sender, e);
+        }
     }
 }

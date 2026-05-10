@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -23,6 +24,7 @@ public partial class ChannelsPage : UserControl, INotifyPropertyChanged
     private InvokeRequest? _invokeRequest;
     private SettingsClass? _settings;
     private Timer? timer;
+    private CancellationTokenSource? _cancellationTokenSource;
     private bool _isRunning = false;
     
     public static readonly StyledProperty<bool> IsLoadedProperty =
@@ -383,6 +385,44 @@ public partial class ChannelsPage : UserControl, INotifyPropertyChanged
             {
                 popup.IsOpen = false;
             }
+        }
+    }
+
+    private async void EditCreated(object? _, RoutedEventArgs __)
+    {
+        try
+        {
+            _cancellationTokenSource?.Cancel();
+
+            _cancellationTokenSource = new CancellationTokenSource();
+            var token = _cancellationTokenSource.Token;
+
+            var result = await _invokeRequest!.SendRequestAsync("is_valid_effects_json", new Dictionary<string, object> { { "effects", EffectsUi.GetCurrentJson() } });
+            var trimmedResult = result?.Trim().Trim('"');
+
+            if (trimmedResult == "true")
+            {
+                EffectsUi.BorderColor = new SolidColorBrush(Colors.Green);
+            }
+            else
+            {
+                EffectsUi.BorderColor = new SolidColorBrush(Colors.Red);
+            }
+
+            EffectsUi.OnPropertyChanged(nameof(EffectsUi.BorderColor));
+
+            await Task.Delay(500, token);
+
+            var oppositeBrush = Application.Current?.FindResource("Opposite") as IBrush;
+            EffectsUi.BorderColor = oppositeBrush ?? new SolidColorBrush(Colors.Transparent);
+            EffectsUi.OnPropertyChanged(nameof(EffectsUi.BorderColor));
+        }
+        catch (TaskCanceledException)
+        {}
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Edit validation error: {ex}");
+            throw;
         }
     }
 }

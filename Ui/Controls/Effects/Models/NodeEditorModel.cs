@@ -1,18 +1,46 @@
+using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Collections.ObjectModel;
 using System.Linq;
+using Avalonia.Interactivity;
 
 namespace Vice.Ui.Controls.Effects.Models;
 
 public class NodeEditorModel : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler? PropertyChanged;
+    public event EventHandler? Edit;
+
     public void OnPropertyChanged([CallerMemberName] string? propname = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propname));
 
+    public void OnEdit()
+        => Edit?.Invoke(this, EventArgs.Empty);
+
     public ObservableCollection<NodeControlModel> Nodes { get; } = new();
     public ObservableCollection<ConnectionModel> Connections { get; } = new();
+
+    private double _zoom = 1.0;
+    public double Zoom
+    {
+        get => _zoom;
+        set { if (_zoom != value) { _zoom = value; OnPropertyChanged(); } }
+    }
+
+    private double _offsetX = 0.0;
+    public double OffsetX
+    {
+        get => _offsetX;
+        set { if (_offsetX != value) { _offsetX = value; OnPropertyChanged(); } }
+    }
+
+    private double _offsetY = 0.0;
+    public double OffsetY
+    {
+        get => _offsetY;
+        set { if (_offsetY != value) { _offsetY = value; OnPropertyChanged(); } }
+    }
 
     private bool _isPreviewing;
     public bool IsPreviewing
@@ -75,13 +103,26 @@ public class NodeEditorModel : INotifyPropertyChanged
                 c.ToPortId == input.Id))
             return;
 
+        var existingOuts = Connections.Where(c =>
+                c.FromNodeId == outputNodeId &&
+                c.FromPortId == output.Id).ToList();
+
+        foreach (var c in existingOuts)
+            Connections.Remove(c);
+
+        var toNodeId = GetNodeId(input);
+        if (toNodeId == null)
+            return;
+
         Connections.Add(new ConnectionModel
         {
             FromNodeId = outputNodeId,
             FromPortId = output.Id,
-            ToNodeId = GetNodeId(input)!,
+            ToNodeId = toNodeId,
             ToPortId = input.Id
         });
+
+        OnEdit();
     }
 
     private string? GetNodeId(PortModel port)

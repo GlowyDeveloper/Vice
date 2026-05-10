@@ -2,7 +2,7 @@ use std::path::Path;
 use std::{net::TcpStream, time::Duration, fs};
 use serde::Deserialize;
 
-use crate::files::{self, Channel, DeviceOrApp, EffectNode, Effects, EffectsType, Settings, SoundboardSFX};
+use crate::files::{self, Channel, DeviceOrApp, Effects, Settings, SoundboardSFX};
 use crate::audio::{self};
 use crate::error;
 
@@ -246,4 +246,8 @@ pub(crate) fn confirm_update() -> Result<String, String> {
     }
 
     return files::extract_updater("update", std::env::current_exe().unwrap(), debug)
+}
+
+pub(crate) fn is_valid_effects_json(effects: Effects) -> bool {
+    audio::is_valid_effects_json(effects)
 }

@@ -502,6 +502,11 @@ fn handle_request(cmd: &str, args: Value, hotkeys: &mut Hotkeys) -> Value {
             let volume = audio::get_peaks(file.to_string());
             return json!({"result": volume});
         }
+    } else if cmd == "is_valid_effects_json" {
+        let res = funcs::is_valid_effects_json(
+            args.get("effects").and_then(|v| Some(files::fix_effects(v.clone()))).unwrap_or_default()
+        );
+        return json!({"result": res.to_string()});
     } else if cmd == "save_settings" {
         let res = funcs::save_settings(
             args.get("output").and_then(|v| v.as_str()).unwrap_or_default().to_string(),

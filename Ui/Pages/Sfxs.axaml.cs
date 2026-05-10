@@ -14,6 +14,8 @@ using System.Text.Json;
 using Avalonia.Layout;
 using Avalonia.Threading;
 using Vice.Ui.Utils;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Vice.Ui.Pages;
 
@@ -24,6 +26,7 @@ public partial class SfxsPage : UserControl, INotifyPropertyChanged
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propname));
     
     private InvokeRequest? _invokeRequest;
+    private CancellationTokenSource? _cancellationTokenSource;
     
     public static readonly StyledProperty<bool> IsLoadedProperty =
         AvaloniaProperty.Register<SfxsPage, bool>(nameof(IsLoaded), false);
@@ -322,6 +325,44 @@ public partial class SfxsPage : UserControl, INotifyPropertyChanged
             EditedItemTemplate!.sound = path;
             EditedItemTemplate.OnPropertyChanged(nameof(EditedItemTemplate.sound));
             GenerateVolume();
+        }
+    }
+
+    private async void EditCreated(object? _, RoutedEventArgs __)
+    {
+        try
+        {
+            _cancellationTokenSource?.Cancel();
+
+            _cancellationTokenSource = new CancellationTokenSource();
+            var token = _cancellationTokenSource.Token;
+
+            var result = await _invokeRequest!.SendRequestAsync("is_valid_effects_json", new Dictionary<string, object> { { "effects", EffectsUi.GetCurrentJson() } });
+            var trimmedResult = result?.Trim().Trim('"');
+
+            if (trimmedResult == "true")
+            {
+                EffectsUi.BorderColor = new SolidColorBrush(Colors.Green);
+            }
+            else
+            {
+                EffectsUi.BorderColor = new SolidColorBrush(Colors.Red);
+            }
+
+            EffectsUi.OnPropertyChanged(nameof(EffectsUi.BorderColor));
+
+            await Task.Delay(500, token);
+
+            var oppositeBrush = Application.Current?.FindResource("Opposite") as IBrush;
+            EffectsUi.BorderColor = oppositeBrush ?? new SolidColorBrush(Colors.Transparent);
+            EffectsUi.OnPropertyChanged(nameof(EffectsUi.BorderColor));
+        }
+        catch (TaskCanceledException)
+        {}
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Edit validation error: {ex}");
+            throw;
         }
     }
 }

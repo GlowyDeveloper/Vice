@@ -426,6 +426,18 @@ extern "C" {
         return c_strs.data();
     }
     #pragma endregion
+    #pragma region Effects Checking
+    bool is_valid_effects(FFIEffects effects) {
+        try {
+            BlocksManager manager{};
+            manager.Initialize(&effects, 44100, 2);
+            float frame[2] = {0.5f, 0.5f};
+            return manager.Process(frame);
+        } catch (...) {
+            return false;
+        }
+    }
+    #pragma endregion
     #pragma region Get Outputs
     const char** get_outputs(size_t* len) {
         *len = 0;

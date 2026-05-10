@@ -281,7 +281,7 @@
                         
                     <Border Height="20"/>
                     
-                    <effects:Effects Height="150" HorizontalAlignment="Stretch" x:Name="EffectsUi"/>
+                    <effects:Effects Height="150" HorizontalAlignment="Stretch" x:Name="EffectsUi" BorderColor="{DynamicResource Opposite}" Edited="EditCreated"/>
                 </StackPanel>
             </DockPanel>
         </Grid>

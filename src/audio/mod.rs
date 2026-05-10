@@ -19,6 +19,7 @@ unsafe extern "C" {
     fn insert_volume(key: *const c_char, value: f32);
     fn reset_volume();
     fn get_volume_display(key: *const c_char) -> f32;
+    fn is_valid_effects(effects: FFIEffects) -> bool;
 }
 
 #[repr(C)]
@@ -297,6 +298,11 @@ pub(crate) fn get_volume_parsed(name: String) -> String {
     unsafe {
         let vol = get_volume_display(name_cstr.as_ptr());
         vol.to_string()
+    }
+}
+pub(crate) fn is_valid_effects_json(effects: Effects) -> bool {
+    unsafe {
+        is_valid_effects(convert_effects_to_ffi_safe(effects).ffi)
     }
 }
 

@@ -6,35 +6,37 @@
              x:DataType="models:NodeEditorModel"
              x:CompileBindings="True">
   
-  <Grid>
-    <ItemsControl ItemsSource="{Binding Nodes}"
-                  HorizontalAlignment="Stretch"
-                  VerticalAlignment="Stretch">
-  
-      <ItemsControl.ItemsPanel>
-        <ItemsPanelTemplate>
-          <Canvas/>
-        </ItemsPanelTemplate>
-      </ItemsControl.ItemsPanel>
-  
-      <ItemsControl.ItemContainerTheme>
-        <ControlTheme TargetType="ContentPresenter"
-                      x:DataType="models:NodeControlModel">
-          <Setter Property="Canvas.Left" Value="{Binding X}" />
-          <Setter Property="Canvas.Top" Value="{Binding Y}" />
-          <Setter Property="HorizontalAlignment" Value="Left" />
-          <Setter Property="VerticalAlignment" Value="Top" />
-        </ControlTheme>
-      </ItemsControl.ItemContainerTheme>
-  
-      <ItemsControl.ItemTemplate>
-        <DataTemplate DataType="models:NodeControlModel">
-          <local:NodeControl
-            EditorVm="{Binding DataContext, RelativeSource={RelativeSource AncestorType=local:NodeEditor}}"/>
-        </DataTemplate>
-      </ItemsControl.ItemTemplate>
-    </ItemsControl>
-    
-    <Canvas Name="ConnectionsLayer" IsHitTestVisible="False" Background="Transparent" />
+  <Grid Background="Transparent">
+    <Grid Name="ContentRoot" Background="Transparent" ClipToBounds="False">
+      <ItemsControl ItemsSource="{Binding Nodes}"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch" ClipToBounds="False">
+
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <Canvas HorizontalAlignment="Stretch" VerticalAlignment="Stretch" ClipToBounds="False"/>
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+
+        <ItemsControl.ItemContainerTheme>
+          <ControlTheme TargetType="ContentPresenter"
+                        x:DataType="models:NodeControlModel">
+            <Setter Property="Canvas.Left" Value="{Binding X}" />
+            <Setter Property="Canvas.Top" Value="{Binding Y}" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+          </ControlTheme>
+        </ItemsControl.ItemContainerTheme>
+
+        <ItemsControl.ItemTemplate>
+          <DataTemplate DataType="models:NodeControlModel">
+            <local:NodeControl
+              EditorVm="{Binding DataContext, RelativeSource={RelativeSource AncestorType=local:NodeEditor}}"/>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+      
+      <Canvas Name="ConnectionsLayer" IsHitTestVisible="False" Background="Transparent" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" ClipToBounds="False"/>
+    </Grid>
   </Grid>
 </UserControl>

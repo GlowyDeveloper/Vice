@@ -444,10 +444,10 @@ public:
                 n.block->Start(channels);
     }
 
-    void Process(float* frame) {
+    bool Process(float* frame) {
         if (!has_in_node || !has_out_node) {
             for (int c = 0; c < channels; ++c) frame[c] = 0.0f;
-            return;
+            return false;
         }
 
         std::vector<AudioFrame> values(nodes.size(), AudioFrame(channels, 0.0f));
@@ -513,7 +513,9 @@ public:
         if (!wrote_output) {
             error("Graph did not reach Out node");
             for (int c = 0; c < channels; ++c) frame[c] = 0.0f;
+            return false;
         }
+        return true;
     }
 
     size_t RequiredTailSamples() const {
